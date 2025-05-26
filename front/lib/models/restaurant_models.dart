@@ -32,34 +32,46 @@ class MenuItem {
 
 class Reservation {
   final int id;
-  final DateTime date;
-  final String time;
-  final int numberOfGuests;
-  final String status;
-  final String? specialRequests;
   final DateTime createdAt;
+  final DateTime updatedAt;
+  final int numberOfGuests;
+  final DateTime reservationDate;
+  final String status;
+  final Map<String, dynamic> user;
+  final Map<String, dynamic> table;
+  final Map<String, dynamic> timeSlot;
 
   Reservation({
     required this.id,
-    required this.date,
-    required this.time,
-    required this.numberOfGuests,
-    required this.status,
-    this.specialRequests,
     required this.createdAt,
+    required this.updatedAt,
+    required this.numberOfGuests,
+    required this.reservationDate,
+    required this.status,
+    required this.user,
+    required this.table,
+    required this.timeSlot,
   });
 
   factory Reservation.fromJson(Map<String, dynamic> json) {
     return Reservation(
       id: json['id'],
-      date: DateTime.parse(json['date']),
-      time: json['time'],
-      numberOfGuests: json['numberOfGuests'],
-      status: json['status'],
-      specialRequests: json['specialRequests'],
       createdAt: DateTime.parse(json['createdAt']),
+      updatedAt: DateTime.parse(json['updatedAt']),
+      numberOfGuests: json['numberOfGuests'],
+      reservationDate: DateTime.parse(json['reservationDate']),
+      status: json['status'],
+      user: json['user'],
+      table: json['table'],
+      timeSlot: json['timeSlot'],
     );
   }
+
+  // Helper getters for backward compatibility
+  DateTime get date => reservationDate;
+  DateTime get start => DateTime.parse(timeSlot['start']);
+  DateTime get end => DateTime.parse(timeSlot['end']);
+  String get time => '${start.hour.toString().padLeft(2, '0')}:${start.minute.toString().padLeft(2, '0')}';
 }
 
 class CreateReservationRequest {

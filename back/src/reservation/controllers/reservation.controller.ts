@@ -64,6 +64,21 @@ export class ReservationController {
     return this.reservationService.createWithTime(createReservationDto, user);
   }
 
+  @Get('my-reservations')
+  @ApiOperation({ summary: 'Get all reservations for the connected user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns a list of reservations for the connected user',
+    type: [Reservation],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @UseGuards(JwtAuthGuard)
+  @Roles(RoleType.CUSTOMER)
+  @ActivityLogger({ description: 'Get user reservations' })
+  async findMyReservations(@GetUser() user: LoggedUser): Promise<Reservation[]> {
+    return this.reservationService.findByUser(user.id);
+  }
+
   @Get()
   @Roles(RoleType.ADMINISTRATOR, RoleType.HOST)
   @ActivityLogger({ description: 'Get all reservations' })

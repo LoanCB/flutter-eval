@@ -11,31 +11,79 @@ class ReservationService {
   static final List<Reservation> _mockReservations = [
     Reservation(
       id: 1,
-      date: DateTime.now().add(const Duration(days: 2)),
-      time: '19:30',
-      numberOfGuests: 4,
-      status: 'confirmed',
-      specialRequests: 'Table près de la fenêtre',
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      updatedAt: DateTime.now().subtract(const Duration(days: 1)),
+      numberOfGuests: 4,
+      reservationDate: DateTime.now().add(const Duration(days: 2)).copyWith(hour: 12, minute: 0),
+      status: 'CONFIRMED',
+      user: {
+        'id': 1,
+        'firstName': 'John',
+        'lastName': 'Doe',
+        'email': 'john@example.com',
+      },
+      table: {
+        'id': 1,
+        'tableNumber': '1',
+        'capacity': 4,
+      },
+      timeSlot: {
+        'id': 1,
+        'start': DateTime.now().add(const Duration(days: 2)).copyWith(hour: 12, minute: 0).toIso8601String(),
+        'end': DateTime.now().add(const Duration(days: 2)).copyWith(hour: 13, minute: 0).toIso8601String(),
+        'availableSeats': 4,
+      },
     ),
     Reservation(
       id: 2,
-      date: DateTime.now().add(const Duration(days: 7)),
-      time: '20:00',
-      numberOfGuests: 2,
-      status: 'pending',
       createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      updatedAt: DateTime.now().subtract(const Duration(hours: 2)),
+      numberOfGuests: 2,
+      reservationDate: DateTime.now().add(const Duration(days: 7)).copyWith(hour: 19, minute: 0),
+      status: 'PENDING',
+      user: {
+        'id': 1,
+        'firstName': 'John',
+        'lastName': 'Doe',
+        'email': 'john@example.com',
+      },
+      table: {
+        'id': 2,
+        'tableNumber': '2',
+        'capacity': 2,
+      },
+      timeSlot: {
+        'id': 2,
+        'start': DateTime.now().add(const Duration(days: 7)).copyWith(hour: 19, minute: 0).toIso8601String(),
+        'end': DateTime.now().add(const Duration(days: 7)).copyWith(hour: 20, minute: 0).toIso8601String(),
+        'availableSeats': 2,
+      },
     ),
   ];
 
   // Obtenir toutes les réservations de l'utilisateur connecté
   Future<List<Reservation>> getUserReservations() async {
-    // Pour l'instant, retourne des données fictives
-    // Dans une vraie app, on ferait un appel API
-    await Future.delayed(
-      const Duration(milliseconds: 500),
-    ); // Simule la latence réseau
-    return _mockReservations;
+    if (!_authService.isLoggedIn) {
+      throw ReservationException('Vous devez être connecté pour voir vos réservations');
+    }
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiBasePath}/reservations/my-reservations');
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: ApiConfig.authHeaders(_authService.token!),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => Reservation.fromJson(json)).toList();
+      } else {
+        throw ReservationException('Erreur lors de la récupération des réservations');
+      }
+    } catch (e) {
+      throw ReservationException('Erreur de connexion: ${e.toString()}');
+    }
   }
 
   // Créer une nouvelle réservation
@@ -50,14 +98,41 @@ class ReservationService {
     await Future.delayed(const Duration(milliseconds: 800));
 
     // Simule une nouvelle réservation
+    final startTime = DateTime.parse(request.time);
+    final now = DateTime.now();
     final newReservation = Reservation(
       id: _mockReservations.length + 1,
-      date: request.date,
-      time: request.time,
+      createdAt: now,
+      updatedAt: now,
       numberOfGuests: request.numberOfGuests,
-      status: 'pending',
-      specialRequests: request.specialRequests,
-      createdAt: DateTime.now(),
+      reservationDate: request.date.copyWith(
+        hour: startTime.hour,
+        minute: startTime.minute,
+      ),
+      status: 'PENDING',
+      user: {
+        'id': 1,
+        'firstName': 'John',
+        'lastName': 'Doe',
+        'email': 'john@example.com',
+      },
+      table: {
+        'id': 1,
+        'tableNumber': '1',
+        'capacity': request.numberOfGuests,
+      },
+      timeSlot: {
+        'id': _mockReservations.length + 1,
+        'start': request.date.copyWith(
+          hour: startTime.hour,
+          minute: startTime.minute,
+        ).toIso8601String(),
+        'end': request.date.copyWith(
+          hour: startTime.hour + 1,
+          minute: startTime.minute,
+        ).toIso8601String(),
+        'availableSeats': request.numberOfGuests,
+      },
     );
 
     _mockReservations.add(newReservation);
