@@ -16,6 +16,7 @@ import {
   TimeSlotNotFoundException,
 } from '../helpers/exceptions/reservation.exception';
 import { ReservationStatus } from '../types/reservation.types';
+import { NotificationService } from '../../notification/notification.service';
 
 @Injectable()
 export class ReservationService {
@@ -26,6 +27,7 @@ export class ReservationService {
     private readonly timeSlotRepository: Repository<TimeSlot>,
     @InjectRepository(Table)
     private readonly tableRepository: Repository<Table>,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(createReservationDto: CreateReservationDto, user: LoggedUser): Promise<Reservation> {
@@ -130,7 +132,12 @@ export class ReservationService {
       table,
     });
 
-    return this.reservationRepository.save(reservation);
+    const savedReservation = await this.reservationRepository.save(reservation);
+
+    // Envoyer une notification de confirmation
+    await this.notificationService.sendReservationConfirmation(savedReservation);
+
+    return savedReservation;
   }
 
   async findAll(queryFilter: ReservationQueryFilterDto): Promise<EntityFilteredListResults<Reservation>> {
@@ -161,12 +168,24 @@ export class ReservationService {
 
   async updateStatus(id: number, status: ReservationStatus): Promise<Reservation> {
     const reservation = await this.findOne(id);
+    const oldStatus = reservation.status;
     reservation.status = status;
-    return this.reservationRepository.save(reservation);
+    const updatedReservation = await this.reservationRepository.save(reservation);
+
+    // Envoyer une notification de confirmation si le statut a changé
+    if (oldStatus !== status) {
+      await this.notificationService.sendReservationConfirmation(updatedReservation);
+    }
+
+    return updatedReservation;
   }
 
   async remove(id: number): Promise<void> {
     const reservation = await this.findOne(id);
+    
+    // Envoyer une notification d'annulation avant de supprimer la réservation
+    await this.notificationService.sendReservationCancellation(reservation);
+    
     await this.reservationRepository.remove(reservation);
   }
 }

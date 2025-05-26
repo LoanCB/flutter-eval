@@ -5,9 +5,13 @@ import { Reservation } from './entities/reservation.entity';
 import { Table } from './entities/table.entity';
 import { TimeSlot } from './entities/time-slot.entity';
 import { ReservationService } from './services/reservation.service';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Reservation, TimeSlot, Table])],
+  imports: [
+    TypeOrmModule.forFeature([Reservation, TimeSlot, Table]),
+    NotificationModule,
+  ],
   controllers: [ReservationController],
   providers: [ReservationService],
   exports: [ReservationService],
