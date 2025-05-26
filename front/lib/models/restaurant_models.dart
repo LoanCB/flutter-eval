@@ -1,3 +1,31 @@
+class TimeSlot {
+  final String time;
+  final int availableSeats;
+  final int totalSeats;
+
+  TimeSlot({
+    required this.time,
+    required this.availableSeats,
+    required this.totalSeats,
+  });
+
+  bool get isAvailable => availableSeats > 0;
+}
+
+class Restaurant {
+  final String name;
+  final String description;
+  final int totalTables;
+  final List<String> openingHours;
+
+  Restaurant({
+    required this.name,
+    required this.description,
+    required this.totalTables,
+    required this.openingHours,
+  });
+}
+
 class MenuItem {
   final int id;
   final String name;
@@ -34,19 +62,23 @@ class Reservation {
   final int id;
   final DateTime date;
   final String time;
+  final String customerName;
+  final String customerPhone;
   final int numberOfGuests;
   final String status;
   final String? specialRequests;
-  final DateTime createdAt;
+  final DateTime? createdAt;
 
   Reservation({
     required this.id,
     required this.date,
     required this.time,
+    required this.customerName,
+    required this.customerPhone,
     required this.numberOfGuests,
     required this.status,
     this.specialRequests,
-    required this.createdAt,
+    this.createdAt,
   });
 
   factory Reservation.fromJson(Map<String, dynamic> json) {
@@ -54,6 +86,8 @@ class Reservation {
       id: json['id'],
       date: DateTime.parse(json['date']),
       time: json['time'],
+      customerName: json['customerName'],
+      customerPhone: json['customerPhone'],
       numberOfGuests: json['numberOfGuests'],
       status: json['status'],
       specialRequests: json['specialRequests'],

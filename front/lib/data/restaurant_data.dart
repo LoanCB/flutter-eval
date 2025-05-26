@@ -21,39 +21,39 @@ class RestaurantData {
     ],
   );
 
-  // Données fictives de réservations existantes
+  // Données fictives de réservations existantes  
   static final List<Reservation> existingReservations = [
     Reservation(
-      id: "1",
+      id: 1,
       date: DateTime.now(),
-      timeSlot: "12:00",
+      time: "12:00",
       customerName: "Jean Dupont",
       customerPhone: "0123456789",
       numberOfGuests: 4,
       status: 'confirmed',
     ),
     Reservation(
-      id: "2",
+      id: 2,
       date: DateTime.now(),
-      timeSlot: "12:00",
+      time: "12:00",
       customerName: "Marie Martin",
       customerPhone: "0987654321",
       numberOfGuests: 2,
       status: 'confirmed',
     ),
     Reservation(
-      id: "3",
+      id: 3,
       date: DateTime.now(),
-      timeSlot: "19:30",
+      time: "19:30",
       customerName: "Pierre Durand",
       customerPhone: "0147258369",
       numberOfGuests: 6,
       status: 'confirmed',
     ),
     Reservation(
-      id: "4",
+      id: 4,
       date: DateTime.now().add(const Duration(days: 1)),
-      timeSlot: "20:00",
+      time: "20:00",
       customerName: "Sophie Leroy",
       customerPhone: "0165432198",
       numberOfGuests: 3,
@@ -76,7 +76,7 @@ class RestaurantData {
                 reservation.date.year == selectedDate.year &&
                 reservation.date.month == selectedDate.month &&
                 reservation.date.day == selectedDate.day &&
-                reservation.timeSlot == time &&
+                reservation.time == time &&
                 reservation.status == 'confirmed',
           )
           .fold(0, (sum, reservation) => sum + reservation.numberOfGuests);

@@ -23,9 +23,31 @@ class _ReservationsListScreenState extends State<ReservationsListScreen> {
     await provider.loadTodayReservations();
     await provider.loadUserReservations();
   }
+
+  List<Reservation> _getSortedTodayReservations(List<Reservation> reservations) {
+    return List.from(reservations)
+      ..sort((a, b) => a.time.compareTo(b.time));
+  }
+
+  List<Reservation> _getSortedFutureReservations(List<Reservation> reservations) {
+    final today = DateTime.now();
+    final tomorrow = DateTime(today.year, today.month, today.day + 1);
+    
+    return reservations
+        .where((r) => r.date.isAfter(tomorrow))
+        .where((r) => r.status != 'cancelled')
+        .toList()
+      ..sort((a, b) {
+        final dateCompare = a.date.compareTo(b.date);
+        if (dateCompare == 0) {
+          return a.time.compareTo(b.time);
+        }
+        return dateCompare;
+      });
+  }
+
   Widget _buildReservationCard(Reservation reservation) {
-    final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
-    final date = DateTime.parse(reservation.date.toString());
+    final dateFormat = DateFormat('dd/MM/yyyy');
     
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -64,7 +86,7 @@ class _ReservationsListScreenState extends State<ReservationsListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 8),
-            _buildInfoRow(Icons.calendar_today, dateFormat.format(date)),
+            _buildInfoRow(Icons.calendar_today, '${dateFormat.format(reservation.date)} à ${reservation.time}'),
             const SizedBox(height: 4),
             _buildInfoRow(Icons.person, reservation.customerName),
             const SizedBox(height: 4),
@@ -101,7 +123,7 @@ class _ReservationsListScreenState extends State<ReservationsListScreen> {
                       context,
                       listen: false,
                     );
-                    await provider.cancelReservation(int.parse(reservation.id));
+                    await provider.cancelReservation(reservation.id);
                     await _loadReservations();
                   }
                 },
@@ -174,9 +196,11 @@ class _ReservationsListScreenState extends State<ReservationsListScreen> {
               return Center(child: Text(provider.error!));
             }
 
+            final sortedTodayReservations = _getSortedTodayReservations(provider.todayReservations);
+            final sortedFutureReservations = _getSortedFutureReservations(provider.reservations);
+
             return ListView(
               children: [
-                // Today's reservations section
                 const Padding(
                   padding: EdgeInsets.all(16),
                   child: Text(
@@ -187,7 +211,7 @@ class _ReservationsListScreenState extends State<ReservationsListScreen> {
                     ),
                   ),
                 ),
-                if (provider.todayReservations.isEmpty)
+                if (sortedTodayReservations.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
@@ -198,9 +222,8 @@ class _ReservationsListScreenState extends State<ReservationsListScreen> {
                       ),
                     ),
                   )
-                else                ...provider.todayReservations
-                    .map(_buildReservationCard)
-                    .toList(),
+                else
+                  ...sortedTodayReservations.map(_buildReservationCard),
 
                 const Padding(
                   padding: EdgeInsets.all(16),
@@ -212,23 +235,19 @@ class _ReservationsListScreenState extends State<ReservationsListScreen> {
                     ),
                   ),
                 ),
-                ...provider.reservations
-                    .where((r) {
-                      final reservationDate = DateTime.parse(r.date.toString());
-                      final today = DateTime.now();
-                      return reservationDate.isAfter(
-                        DateTime(today.year, today.month, today.day + 1),
-                      );
-                    })
-                    .where((r) => r.status != 'cancelled')
-                    .toList()
-                    .sorted((a, b) {
-                      final dateA = DateTime.parse(a.date.toString());
-                      final dateB = DateTime.parse(b.date.toString());
-                      return dateA.compareTo(dateB);
-                    })
-                    .map(_buildReservationCard)
-                    .toList(),
+                if (sortedFutureReservations.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'Aucune réservation à venir',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  )
+                else
+                  ...sortedFutureReservations.map(_buildReservationCard),
 
                 const SizedBox(height: 32),
               ],
