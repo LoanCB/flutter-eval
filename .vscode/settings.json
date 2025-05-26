@@ -8,22 +8,21 @@
     "source.organizeImports": "always"
   },
   "workbench.colorCustomizations": {
-    "activityBar.background": "#033616",
-    "titleBar.activeBackground": "#054B1F",
-    "titleBar.activeForeground": "#F0FEF5"
+    "activityBar.background": "#193131",
+    "titleBar.activeBackground": "#234545",
+    "titleBar.activeForeground": "#F8FCFC"
   },
-  "cSpell.words": ["Axignis"],
-  "cSpell.ignorePaths": [
-    "package-lock.json",
-    "node_modules",
-    "vscode-extension",
-    ".git/{info,lfs,logs,refs,objects}/**",
-    ".git/{index,*refs,*HEAD}",
-    ".vscode",
-    ".vscode-insiders",
-    ".env",
-    "dist",
-    "package.json",
-    ".env.sample"
-  ]
+  "dart.flutterSdkPath": null,
+  "dart.checkForSdkUpdates": true,
+  "dart.allowAnalytics": false,
+  "dart.closingLabels": true,
+  "dart.flutterCreateIOSLanguage": "swift",
+  "dart.flutterCreateAndroidLanguage": "kotlin",
+  "flutter.sdk": null,
+  "files.associations": {
+    "*.dart": "dart"
+  },
+  "emmet.includeLanguages": {
+    "dart": "html"
+  }
 }
