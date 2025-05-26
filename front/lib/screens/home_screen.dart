@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import 'menu_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -124,7 +125,12 @@ class HomeScreen extends StatelessWidget {
                     subtitle: 'Découvrez nos plats',
                     color: Colors.blue,
                     onTap: () {
-                      // Navigation vers le menu (sera géré par la navigation principale)
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MenuScreen(),
+                        ),
+                      );
                     },
                   ),
                 ),
