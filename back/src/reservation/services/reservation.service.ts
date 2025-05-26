@@ -3,7 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityFilteredListResults, getEntityFilteredList } from '@paginator/paginator.service';
 import { LoggedUser } from '@src/auth/types/logged-user.type';
 import { Between, Repository } from 'typeorm';
+import { AvailableReservationsDto } from '../dto/available-reservations.dto';
+import { AvailableTimeSlotDto } from '../dto/available-time-slot.dto';
 import { CreateReservationDto } from '../dto/create-reservation.dto';
+import { CreateTableDto } from '../dto/create-table.dto';
 import { ReservationQueryFilterDto } from '../dto/reservation-query-filter.dto';
 import { Reservation } from '../entities/reservation.entity';
 import { Table } from '../entities/table.entity';
@@ -168,5 +171,77 @@ export class ReservationService {
   async remove(id: number): Promise<void> {
     const reservation = await this.findOne(id);
     await this.reservationRepository.remove(reservation);
+  }
+
+  async findAvailableReservations(query: AvailableReservationsDto): Promise<AvailableTimeSlotDto[]> {
+    const date = new Date(query.date);
+    date.setHours(0, 0, 0, 0);
+
+    // Create time slots for 12:00 and 13:00
+    const timeSlots: AvailableTimeSlotDto[] = [];
+    const hours = [12, 13];
+
+    // Find all available tables that can accommodate the requested seats
+    const availableTables = await this.tableRepository.find({
+      where: query.seats ? { capacity: query.seats } : {},
+    });
+
+    if (availableTables.length === 0) {
+      return [];
+    }
+
+    for (const hour of hours) {
+      const startTime = new Date(date);
+      startTime.setHours(hour, 0, 0, 0);
+
+      const endTime = new Date(startTime);
+      endTime.setHours(hour + 1, 0, 0, 0); // 1-hour duration
+
+      // For each table, check availability
+      for (const table of availableTables) {
+        // Check if there's an existing reservation that overlaps for this table
+        const existingReservation = await this.reservationRepository.findOne({
+          where: {
+            table: { id: table.id },
+            timeSlot: {
+              start: Between(startTime, endTime),
+              end: Between(startTime, endTime),
+            },
+          },
+          relations: ['timeSlot'],
+        });
+
+        // If no existing reservation for this table and time slot
+        if (!existingReservation) {
+          // Create a new time slot with table information
+          const timeSlot: AvailableTimeSlotDto = {
+            start: startTime,
+            end: endTime,
+            availableSeats: table.capacity,
+            table: table,
+          };
+
+          timeSlots.push(timeSlot);
+        }
+      }
+    }
+
+    return timeSlots;
+  }
+
+  async createTable(createTableDto: CreateTableDto): Promise<Table> {
+    // Check if table number already exists
+    const existingTable = await this.tableRepository.findOne({
+      where: { tableNumber: createTableDto.tableNumber },
+    });
+
+    if (existingTable) {
+      throw new ReservationHttpException(ReservationErrorCode.TABLE_ALREADY_EXISTS, HttpStatus.BAD_REQUEST, {
+        tableNumber: createTableDto.tableNumber,
+      });
+    }
+
+    const table = this.tableRepository.create(createTableDto);
+    return this.tableRepository.save(table);
   }
 }

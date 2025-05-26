@@ -10,9 +10,13 @@ import { LoggedUser } from '@src/auth/types/logged-user.type';
 import { SwaggerFailureResponse } from '@src/common/helpers/common-set-decorators.helper';
 import { PaginatedList } from '@src/paginator/paginator.type';
 import { RoleType } from '@src/users/types/role.types';
+import { AvailableReservationsDto } from '../dto/available-reservations.dto';
+import { AvailableTimeSlotDto } from '../dto/available-time-slot.dto';
 import { CreateReservationDto } from '../dto/create-reservation.dto';
+import { CreateTableDto } from '../dto/create-table.dto';
 import { ReservationQueryFilterDto } from '../dto/reservation-query-filter.dto';
 import { Reservation } from '../entities/reservation.entity';
+import { Table } from '../entities/table.entity';
 import { ReservationForbiddenException } from '../helpers/exceptions/reservation.exception';
 import { ReservationService } from '../services/reservation.service';
 import { ReservationStatus } from '../types/reservation.types';
@@ -25,6 +29,13 @@ import { ReservationStatus } from '../types/reservation.types';
 @Controller({ path: 'reservations', version: ['1'] })
 export class ReservationController {
   constructor(private readonly reservationService: ReservationService) {}
+
+  @Post('tables')
+  @Roles(RoleType.HOST)
+  @ActivityLogger({ description: 'Create a new table' })
+  async createTable(@Body() createTableDto: CreateTableDto): Promise<Table> {
+    return this.reservationService.createTable(createTableDto);
+  }
 
   @Post()
   @Roles(RoleType.CUSTOMER)
@@ -44,6 +55,13 @@ export class ReservationController {
       totalResults: total,
       currentResults: reservations.length,
     };
+  }
+
+  @Get('available')
+  @Roles(RoleType.CUSTOMER)
+  @ActivityLogger({ description: 'Get available reservations' })
+  async findAvailable(@Query() query: AvailableReservationsDto): Promise<AvailableTimeSlotDto[]> {
+    return this.reservationService.findAvailableReservations(query);
   }
 
   @Get(':id')

@@ -1,5 +1,5 @@
 class ApiConfig {
-  static const String baseUrl = 'http://localhost:3010';
+  static const String baseUrl = 'http://10.0.2.2:3010';
   static const String apiVersion = 'v1';
   static const String apiBasePath = '/api/v1';
 

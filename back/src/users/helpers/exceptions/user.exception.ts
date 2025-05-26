@@ -7,7 +7,6 @@ export enum UserErrorCode {
   CANNOT_UPDATE_OWN_ACCOUNT_STATE = 'CANNOT_UPDATE_OWN_ACCOUNT_STATE',
   EMAIL_ALREADY_EXISTS = 'EMAIL_ALREADY_EXISTS',
   ROLE_NOT_FOUND = 'ROLE_NOT_FOUND',
-  USER_NOT_OWNED_COMPANY = 'USER_NOT_OWNED_COMPANY',
 }
 
 type ErrorCode = CommonErrorCode | UserErrorCode;
@@ -26,7 +25,6 @@ export class UserHttpException extends CustomHttpException {
       [UserErrorCode.CANNOT_UPDATE_OWN_ACCOUNT_STATE]: 'Current user cannot update this own account state',
       [UserErrorCode.EMAIL_ALREADY_EXISTS]: 'Email already exists in the database',
       [UserErrorCode.ROLE_NOT_FOUND]: 'Role not found in the database',
-      [UserErrorCode.USER_NOT_OWNED_COMPANY]: 'You cannot attach this user because he not in the same company',
     };
 
     return messages[this.code] || null;
@@ -54,11 +52,5 @@ export class UserEmailAlreadyExistsException extends UserHttpException {
 export class RoleNotFoundException extends UserHttpException {
   constructor(details?: Record<string, string | number>) {
     super(UserErrorCode.ROLE_NOT_FOUND, HttpStatus.BAD_REQUEST, details);
-  }
-}
-
-export class UserNotOwnedCompanyException extends UserHttpException {
-  constructor(details?: Record<string, string | number>) {
-    super(UserErrorCode.USER_NOT_OWNED_COMPANY, HttpStatus.BAD_REQUEST, details);
   }
 }
