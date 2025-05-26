@@ -211,9 +211,33 @@ class _AvailableSeatsScreenState extends State<AvailableSeatsScreen> {
                                   title: Text('Table ${seat['table']['tableNumber']}'),
                                   subtitle: Text('${seat['availableSeats']} places disponibles'),
                                   trailing: ElevatedButton(
-                                    onPressed: () {
-                                      // Handle reservation
-                                      Navigator.pop(context, seat);
+                                    onPressed: () async {
+                                      try {
+                                        final result = await _reservationService.createReservationWithTime(
+                                          tableId: seat['table']['id'],
+                                          startTime: seat['start'],
+                                          numberOfGuests: selectedSeats ?? 1,
+                                        );
+                                        
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Réservation créée avec succès !'),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                          Navigator.pop(context, result);
+                                        }
+                                      } catch (e) {
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Erreur: ${e.toString()}'),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                        }
+                                      }
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.orange,

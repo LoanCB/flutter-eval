@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ActivityLogger } from '@src/activity-logger/helpers/activity-logger.decorator';
 import { Resources } from '@src/activity-logger/types/resource.types';
 import { Roles } from '@src/auth/decorators/role.decorator';
@@ -12,6 +12,7 @@ import { PaginatedList } from '@src/paginator/paginator.type';
 import { RoleType } from '@src/users/types/role.types';
 import { AvailableReservationsDto } from '../dto/available-reservations.dto';
 import { AvailableTimeSlotDto } from '../dto/available-time-slot.dto';
+import { CreateReservationWithTimeDto } from '../dto/create-reservation-with-time.dto';
 import { CreateReservationDto } from '../dto/create-reservation.dto';
 import { CreateTableDto } from '../dto/create-table.dto';
 import { ReservationQueryFilterDto } from '../dto/reservation-query-filter.dto';
@@ -42,6 +43,25 @@ export class ReservationController {
   @ActivityLogger({ description: 'Create a new reservation' })
   async create(@Body() createReservationDto: CreateReservationDto, @GetUser() user: LoggedUser): Promise<Reservation> {
     return this.reservationService.create(createReservationDto, user);
+  }
+
+  @Post('with-time')
+  @ApiOperation({ summary: 'Create a new reservation with specific table and time' })
+  @ApiResponse({
+    status: 201,
+    description: 'The reservation has been successfully created.',
+    type: Reservation,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiResponse({ status: 404, description: 'Table not found.' })
+  @UseGuards(JwtAuthGuard)
+  @Roles(RoleType.CUSTOMER)
+  createWithTime(
+    @Body() createReservationDto: CreateReservationWithTimeDto,
+    @GetUser() user: LoggedUser,
+  ): Promise<Reservation> {
+    return this.reservationService.createWithTime(createReservationDto, user);
   }
 
   @Get()

@@ -139,6 +139,39 @@ class ReservationService {
     }
   }
 
+  // Créer une réservation avec horaire
+  Future<Map<String, dynamic>> createReservationWithTime({
+    required int tableId,
+    required String startTime,
+    required int numberOfGuests,
+  }) async {
+    if (!_authService.isLoggedIn) {
+      throw ReservationException('Vous devez être connecté pour réserver');
+    }
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiBasePath}/reservations/with-time');
+
+    try {
+      final response = await http.post(
+        uri,
+        headers: ApiConfig.authHeaders(_authService.token!),
+        body: json.encode({
+          'tableId': tableId,
+          'startTime': startTime,
+          'numberOfGuests': numberOfGuests,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        return json.decode(response.body);
+      } else {
+        throw ReservationException('Erreur lors de la création de la réservation');
+      }
+    } catch (e) {
+      throw ReservationException('Erreur de connexion: ${e.toString()}');
+    }
+  }
+
   // Dans une vraie implémentation, ces méthodes feraient des appels HTTP:
 
   /*

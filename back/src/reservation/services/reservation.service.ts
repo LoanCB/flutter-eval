@@ -5,6 +5,7 @@ import { LoggedUser } from '@src/auth/types/logged-user.type';
 import { Between, Repository } from 'typeorm';
 import { AvailableReservationsDto } from '../dto/available-reservations.dto';
 import { AvailableTimeSlotDto } from '../dto/available-time-slot.dto';
+import { CreateReservationWithTimeDto } from '../dto/create-reservation-with-time.dto';
 import { CreateReservationDto } from '../dto/create-reservation.dto';
 import { CreateTableDto } from '../dto/create-table.dto';
 import { ReservationQueryFilterDto } from '../dto/reservation-query-filter.dto';
@@ -243,5 +244,64 @@ export class ReservationService {
 
     const table = this.tableRepository.create(createTableDto);
     return this.tableRepository.save(table);
+  }
+
+  async createWithTime(createReservationDto: CreateReservationWithTimeDto, user: LoggedUser): Promise<Reservation> {
+    // Get the table
+    const table = await this.tableRepository.findOneBy({ id: createReservationDto.tableId });
+    if (!table) {
+      throw new TableNotFoundException({ id: createReservationDto.tableId });
+    }
+
+    // Check if table has enough capacity
+    if (table.capacity < createReservationDto.numberOfGuests) {
+      throw new ReservationHttpException(ReservationErrorCode.NOT_ENOUGH_SEATS, HttpStatus.BAD_REQUEST, {
+        requested: createReservationDto.numberOfGuests,
+        available: table.capacity,
+      });
+    }
+
+    // Create start and end times
+    const startTime = new Date(createReservationDto.startTime);
+    const endTime = new Date(startTime.getTime() + 60 * 60000); // Add 1 hour
+
+    // Check if there's an existing reservation that overlaps
+    const existingReservation = await this.reservationRepository.findOne({
+      where: {
+        table: { id: table.id },
+        timeSlot: {
+          start: Between(startTime, endTime),
+          end: Between(startTime, endTime),
+        },
+      },
+      relations: ['timeSlot'],
+    });
+
+    if (existingReservation) {
+      throw new ReservationHttpException(ReservationErrorCode.TIME_SLOT_ALREADY_RESERVED, HttpStatus.BAD_REQUEST, {
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      });
+    }
+
+    // Create time slot
+    const timeSlot = this.timeSlotRepository.create({
+      start: startTime,
+      end: endTime,
+      availableSeats: table.capacity,
+    });
+
+    const savedTimeSlot = await this.timeSlotRepository.save(timeSlot);
+
+    // Create reservation
+    const reservation = this.reservationRepository.create({
+      numberOfGuests: createReservationDto.numberOfGuests,
+      reservationDate: createReservationDto.startTime,
+      user,
+      timeSlot: savedTimeSlot,
+      table,
+    });
+
+    return this.reservationRepository.save(reservation);
   }
 }
