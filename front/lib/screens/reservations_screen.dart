@@ -31,7 +31,7 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
       builder: (context, reservationProvider, child) {
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Mes Réservations'),
+            title: Text(reservationProvider.isHost ? 'Réservations du jour' : 'Mes Réservations'),
             backgroundColor: Colors.orange,
             foregroundColor: Colors.white,
           ),
@@ -86,57 +86,60 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
 
                 // Loading or Reservations list
                 Expanded(
-                  child:
-                      reservationProvider.isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : reservationProvider.reservations.isEmpty
+                  child: reservationProvider.isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : reservationProvider.reservations.isEmpty
                           ? const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.calendar_today,
-                                  size: 64,
-                                  color: Colors.grey,
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'Aucune réservation',
-                                  style: TextStyle(
-                                    fontSize: 18,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today,
+                                    size: 64,
                                     color: Colors.grey,
                                   ),
-                                ),
-                              ],
-                            ),
-                          )
-                          : ListView.builder(
-                            itemCount: reservationProvider.reservations.length,
-                            itemBuilder: (context, index) {
-                              final reservation =
-                                  reservationProvider.reservations[index];
-                              return _ReservationCard(
-                                reservation: reservation,
-                                onCancel:
-                                    () => _cancelReservation(
-                                      reservation.id,
-                                      reservationProvider,
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Aucune réservation',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.grey,
                                     ),
-                              );
-                            },
-                          ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: reservationProvider.reservations.length,
+                              itemBuilder: (context, index) {
+                                final reservation =
+                                    reservationProvider.reservations[index];
+                                return _ReservationCard(
+                                  reservation: reservation,
+                                  onCancel: reservationProvider.isHost
+                                      ? null
+                                      : () => _cancelReservation(
+                                            reservation.id,
+                                            reservationProvider,
+                                          ),
+                                  showUserInfo: reservationProvider.isHost,
+                                );
+                              },
+                            ),
                 ),
               ],
             ),
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed:
-                () => _showNewReservationDialog(context, reservationProvider),
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add),
-            label: const Text('Nouvelle réservation'),
-          ),
+          floatingActionButton: !reservationProvider.isHost
+              ? FloatingActionButton.extended(
+                  onPressed: () =>
+                      _showNewReservationDialog(context, reservationProvider),
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Nouvelle réservation'),
+                )
+              : null,
         );
       },
     );
@@ -222,8 +225,13 @@ class _StatItem extends StatelessWidget {
 class _ReservationCard extends StatelessWidget {
   final Reservation reservation;
   final VoidCallback? onCancel;
+  final bool showUserInfo;
 
-  const _ReservationCard({required this.reservation, this.onCancel});
+  const _ReservationCard({
+    required this.reservation,
+    this.onCancel,
+    this.showUserInfo = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -299,6 +307,18 @@ class _ReservationCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+            if (showUserInfo) ...[
+              _InfoRow(
+                Icons.person,
+                '${reservation.user['firstName']} ${reservation.user['lastName']}',
+              ),
+              const SizedBox(height: 8),
+              _InfoRow(
+                Icons.email,
+                reservation.user['email'],
+              ),
+              const SizedBox(height: 8),
+            ],
             _InfoRow(
               Icons.calendar_today,
               '${reservation.date.day}/${reservation.date.month}/${reservation.date.year}',
@@ -314,25 +334,26 @@ class _ReservationCard extends StatelessWidget {
               'Table ${reservation.table['tableNumber']} (${reservation.numberOfGuests} personne(s))',
             ),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (reservation.status == 'PENDING' ||
-                    reservation.status == 'CONFIRMED')
-                  TextButton(onPressed: onCancel, child: const Text('Annuler')),
-                if (reservation.status == 'CONFIRMED')
-                  ElevatedButton(
-                    onPressed: () {
-                      // Modifier la réservation
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
+            if (!showUserInfo)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (reservation.status == 'PENDING' ||
+                      reservation.status == 'CONFIRMED')
+                    TextButton(onPressed: onCancel, child: const Text('Annuler')),
+                  if (reservation.status == 'CONFIRMED')
+                    ElevatedButton(
+                      onPressed: () {
+                        // Modifier la réservation
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Modifier'),
                     ),
-                    child: const Text('Modifier'),
-                  ),
-              ],
-            ),
+                ],
+              ),
           ],
         ),
       ),

@@ -247,6 +247,39 @@ class ReservationService {
     }
   }
 
+  // Obtenir les réservations du jour pour un HOST
+  Future<List<Reservation>> getTodayReservations() async {
+    if (!_authService.isLoggedIn) {
+      throw ReservationException('Vous devez être connecté pour voir les réservations');
+    }
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiBasePath}/reservations/today');
+    print('🔍 [RESERVATIONS] Fetching today\'s reservations from: $uri');
+    print('🔍 [RESERVATIONS] Headers: ${ApiConfig.authHeaders(_authService.token!)}');
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: ApiConfig.authHeaders(_authService.token!),
+      );
+
+      print('🔍 [RESERVATIONS] Response status: ${response.statusCode}');
+      print('🔍 [RESERVATIONS] Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final reservations = data.map((json) => Reservation.fromJson(json)).toList();
+        print('🔍 [RESERVATIONS] Parsed ${reservations.length} reservations');
+        return reservations;
+      } else {
+        throw ReservationException('Erreur lors de la récupération des réservations du jour');
+      }
+    } catch (e) {
+      print('🔍 [RESERVATIONS] Error: $e');
+      throw ReservationException('Erreur de connexion: ${e.toString()}');
+    }
+  }
+
   // Créer une réservation avec horaire
   Future<Map<String, dynamic>> createReservationWithTime({
     required int tableId,

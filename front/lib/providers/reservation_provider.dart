@@ -2,9 +2,11 @@ import 'package:flutter/foundation.dart';
 
 import '../models/restaurant_models.dart';
 import '../services/reservation_service.dart';
+import '../services/auth_service.dart';
 
 class ReservationProvider extends ChangeNotifier {
   final ReservationService _reservationService = ReservationService();
+  final AuthService _authService = AuthService();
 
   List<Reservation> _reservations = [];
   List<Reservation> _todayReservations = [];
@@ -17,13 +19,14 @@ class ReservationProvider extends ChangeNotifier {
   List<Reservation> get todayReservations => _todayReservations;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get isHost => _authService.user?.role.type == 'HOST';
 
   // Statistiques
   int get totalReservations => _reservations.length;
   int get confirmedReservations =>
-      _reservations.where((r) => r.status == 'confirmed').length;
+      _reservations.where((r) => r.status == 'CONFIRMED').length;
   int get pendingReservations =>
-      _reservations.where((r) => r.status == 'pending').length;
+      _reservations.where((r) => r.status == 'PENDING').length;
 
   // Charger les réservations de l'utilisateur
   Future<void> loadUserReservations() async {
@@ -31,9 +34,21 @@ class ReservationProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      _reservations = await _reservationService.getUserReservations();
+      print('User role: ${_authService.user?.role}'); // Debug print
+      print('Is host: $isHost'); // Debug print
+      
+      if (isHost) {
+        print('Fetching today\'s reservations...'); // Debug print
+        _reservations = await _reservationService.getTodayReservations();
+        print('Today\'s reservations count: ${_reservations.length}'); // Debug print
+      } else {
+        print('Fetching user reservations...'); // Debug print
+        _reservations = await _reservationService.getUserReservations();
+        print('User reservations count: ${_reservations.length}'); // Debug print
+      }
       _clearError();
     } catch (e) {
+      print('Error loading reservations: $e'); // Debug print
       _setError('Erreur lors du chargement des réservations: $e');
     }
 

@@ -16,6 +16,7 @@ import { CreateReservationWithTimeDto } from '../dto/create-reservation-with-tim
 import { CreateReservationDto } from '../dto/create-reservation.dto';
 import { CreateTableDto } from '../dto/create-table.dto';
 import { ReservationQueryFilterDto } from '../dto/reservation-query-filter.dto';
+import { TodayReservationsDto } from '../dto/today-reservations.dto';
 import { Reservation } from '../entities/reservation.entity';
 import { Table } from '../entities/table.entity';
 import { ReservationForbiddenException } from '../helpers/exceptions/reservation.exception';
@@ -77,6 +78,21 @@ export class ReservationController {
   @ActivityLogger({ description: 'Get user reservations' })
   async findMyReservations(@GetUser() user: LoggedUser): Promise<Reservation[]> {
     return await this.reservationService.findByUser(user.id);
+  }
+
+  @Get('today')
+  @ApiOperation({ summary: 'Get all reservations for today' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns a list of reservations for today',
+    type: [Reservation],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @UseGuards(JwtAuthGuard)
+  @Roles(RoleType.HOST)
+  @ActivityLogger({ description: 'Get today reservations' })
+  async findTodayReservations(@Query() query: TodayReservationsDto): Promise<Reservation[]> {
+    return this.reservationService.findTodayReservations(query.status);
   }
 
   @Get()

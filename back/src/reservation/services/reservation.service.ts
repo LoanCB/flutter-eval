@@ -314,4 +314,27 @@ export class ReservationService {
       },
     });
   }
+
+  async findTodayReservations(status?: ReservationStatus): Promise<Reservation[]> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const where: any = {
+      reservationDate: Between(today, tomorrow),
+    };
+
+    if (status) {
+      where.status = status;
+    }
+
+    return this.reservationRepository.find({
+      where,
+      relations: ['user', 'table', 'timeSlot'],
+      order: {
+        reservationDate: 'ASC',
+      },
+    });
+  }
 }
