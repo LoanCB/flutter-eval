@@ -76,7 +76,7 @@ export class ReservationController {
   @Roles(RoleType.CUSTOMER)
   @ActivityLogger({ description: 'Get user reservations' })
   async findMyReservations(@GetUser() user: LoggedUser): Promise<Reservation[]> {
-    return this.reservationService.findByUser(user.id);
+    return await this.reservationService.findByUser(user.id);
   }
 
   @Get()

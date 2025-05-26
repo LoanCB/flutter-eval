@@ -177,21 +177,6 @@ class ReservationService {
     ];
   }
 
-  // Obtenir les réservations pour une date spécifique
-  Future<List<Reservation>> getReservationsForDate(DateTime date) async {
-    // Simule la latence réseau
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Filtre les réservations pour la date donnée et les trie par horaire
-    return _mockReservations
-        .where((reservation) =>
-            reservation.date.year == date.year &&
-            reservation.date.month == date.month &&
-            reservation.date.day == date.day)
-        .toList()
-      ..sort((a, b) => a.time.compareTo(b.time));
-  }
-  
   // Obtenir les places disponibles
   Future<List<Map<String, dynamic>>> getAvailableSeats({
     required String date,
@@ -223,6 +208,39 @@ class ReservationService {
         return data.map((json) => Map<String, dynamic>.from(json)).toList();
       } else {
         throw ReservationException('Erreur lors de la récupération des places disponibles');
+      }
+    } catch (e) {
+      throw ReservationException('Erreur de connexion: ${e.toString()}');
+    }
+  }
+
+  // Obtenir les réservations pour une date spécifique
+  Future<List<Reservation>> getReservationsForDate(DateTime date) async {
+    if (!_authService.isLoggedIn) {
+      throw ReservationException('Vous devez être connecté pour voir vos réservations');
+    }
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiBasePath}/reservations/my-reservations');
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: ApiConfig.authHeaders(_authService.token!),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final allReservations = data.map((json) => Reservation.fromJson(json)).toList();
+        
+        // Filtrer les réservations pour la date spécifiée
+        return allReservations.where((reservation) {
+          final reservationDate = reservation.reservationDate;
+          return reservationDate.year == date.year &&
+                 reservationDate.month == date.month &&
+                 reservationDate.day == date.day;
+        }).toList();
+      } else {
+        throw ReservationException('Erreur lors de la récupération des réservations');
       }
     } catch (e) {
       throw ReservationException('Erreur de connexion: ${e.toString()}');
