@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 
 import '../models/restaurant_models.dart';
 import '../providers/reservation_provider.dart';
@@ -22,10 +23,9 @@ class _ReservationsScreenState extends State<ReservationsScreen> with SingleTick
     _tabController = TabController(length: 2, vsync: this);
     // Charger les réservations au démarrage
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ReservationProvider>(
-        context,
-        listen: false,
-      ).loadUserReservations();
+      final provider = Provider.of<ReservationProvider>(context, listen: false);
+      provider.loadUserReservations();
+      provider.loadTodayReservations();
     });
   }
 
@@ -42,123 +42,166 @@ class _ReservationsScreenState extends State<ReservationsScreen> with SingleTick
 
     return Consumer<ReservationProvider>(
       builder: (context, reservationProvider, child) {
+        if (reservationProvider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Réservations'),
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
-            bottom: isHost ? TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(text: 'Mes Réservations'),
-                Tab(text: 'Réservations du jour'),
-              ],
-            ) : null,
-          ),
-          body: isHost ? TabBarView(
-            controller: _tabController,
-            children: [
-              _buildUserReservations(reservationProvider),
-              const DailyReservationsScreen(),
+            title: const Text('Mes réservations'),
+            backgroundColor: Colors.orange[700],
+            elevation: 0,
+            actions: [
+              if (isHost)
+                IconButton(
+                  icon: const Icon(Icons.calendar_today),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DailyReservationsScreen(),
+                      ),
+                    );
+                  },
+                ),
             ],
-          ) : _buildUserReservations(reservationProvider),
+          ),
+          body: RefreshIndicator(
+            onRefresh: () async {
+              await reservationProvider.loadUserReservations();
+              await reservationProvider.loadTodayReservations();
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Today's Reservations Section
+                    const Text(
+                      'Réservations du jour',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTodayReservations(reservationProvider),
+                    const SizedBox(height: 24),
+
+                    // Future Reservations Section
+                    const Text(
+                      'Réservations à venir',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildFutureReservations(reservationProvider),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _showNewReservationDialog(context, reservationProvider),
+            backgroundColor: Colors.orange[700],
+            child: const Icon(Icons.add),
+          ),
         );
       },
     );
   }
 
-  Widget _buildUserReservations(ReservationProvider reservationProvider) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          // Quick stats
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _StatItem(
-                    icon: Icons.calendar_today,
-                    label: 'Réservations',
-                    value: '${reservationProvider.totalReservations}',
-                  ),
-                  _StatItem(
-                    icon: Icons.check_circle,
-                    label: 'Confirmées',
-                    value: '${reservationProvider.confirmedReservations}',
-                  ),
-                  _StatItem(
-                    icon: Icons.pending,
-                    label: 'En attente',
-                    value: '${reservationProvider.pendingReservations}',
-                  ),
-                ],
-              ),
+  Widget _buildTodayReservations(ReservationProvider reservationProvider) {
+    if (reservationProvider.todayReservations.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Center(
+          child: Text(
+            'Aucune réservation aujourd\'hui',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+              fontStyle: FontStyle.italic,
             ),
           ),
-          const SizedBox(height: 16),
+        ),
+      );
+    }
 
-          // Error message
-          if (reservationProvider.error != null)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                border: Border.all(color: Colors.red.shade200),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                reservationProvider.error!,
-                style: TextStyle(color: Colors.red.shade700),
-              ),
+    return Column(
+      children: reservationProvider.todayReservations
+          .map((reservation) => _ReservationCard(
+                reservation: reservation,
+                onCancel: () => _cancelReservation(
+                  reservation.id,
+                  reservationProvider,
+                ),
+              ))
+          .toList(),
+    );
+  }
+
+  Widget _buildFutureReservations(ReservationProvider reservationProvider) {
+    final now = DateTime.now();
+    final futureReservations = reservationProvider.reservations
+        .where((res) {
+          final resDate = DateTime(
+            res.date.year,
+            res.date.month,
+            res.date.day,
+          );
+          final today = DateTime(
+            now.year,
+            now.month,
+            now.day,
+          );
+          return resDate.isAfter(today);
+        })
+        .toList()
+      ..sort((a, b) {
+        final dateComparison = a.date.compareTo(b.date);
+        if (dateComparison != 0) return dateComparison;
+        return a.time.compareTo(b.time);
+      });
+
+    if (futureReservations.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Center(
+          child: Text(
+            'Aucune réservation future',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+              fontStyle: FontStyle.italic,
             ),
-
-          // Loading or Reservations list
-          Expanded(
-            child: reservationProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : reservationProvider.reservations.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              size: 64,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Aucune réservation',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: reservationProvider.reservations.length,
-                        itemBuilder: (context, index) {
-                          final reservation =
-                              reservationProvider.reservations[index];
-                          return _ReservationCard(
-                            reservation: reservation,
-                            onCancel: () => _cancelReservation(
-                              reservation.id,
-                              reservationProvider,
-                            ),
-                          );
-                        },
-                      ),
           ),
-        ],
-      ),
+        ),
+      );
+    }
+
+    return Column(
+      children: futureReservations
+          .map((reservation) => _ReservationCard(
+                reservation: reservation,
+                onCancel: () => _cancelReservation(
+                  reservation.id,
+                  reservationProvider,
+                ),
+              ))
+          .toList(),
     );
   }
 
@@ -251,7 +294,7 @@ class _ReservationCard extends StatelessWidget {
     String statusText;
     IconData statusIcon;
 
-    switch (reservation.status) {
+    switch (reservation.status.toLowerCase()) {
       case 'confirmed':
         statusColor = Colors.green;
         statusText = 'Confirmée';
@@ -273,6 +316,9 @@ class _ReservationCard extends StatelessWidget {
         statusIcon = Icons.help;
     }
 
+    final dateFormatter = DateFormat('EEEE d MMMM yyyy', 'fr_FR');
+    final formattedDate = dateFormatter.format(reservation.date);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -283,74 +329,56 @@ class _ReservationCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Réservation #${reservation.id}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: statusColor.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(statusIcon, size: 16, color: statusColor),
-                      const SizedBox(width: 4),
                       Text(
-                        statusText,
-                        style: TextStyle(
-                          color: statusColor,
+                        formattedDate,
+                        style: const TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
                         ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(statusIcon, size: 16, color: statusColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            statusText,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _InfoRow(
-              Icons.calendar_today,
-              '${reservation.date.day}/${reservation.date.month}/${reservation.date.year}',
-            ),
-            const SizedBox(height: 8),
-            _InfoRow(Icons.access_time, reservation.time),
-            const SizedBox(height: 8),
-            _InfoRow(Icons.people, '${reservation.numberOfGuests} personne(s)'),
-            if (reservation.specialRequests != null) ...[
-              const SizedBox(height: 8),
-              _InfoRow(Icons.note, reservation.specialRequests!),
-            ],
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (reservation.status == 'pending' ||
-                    reservation.status == 'confirmed')
-                  TextButton(onPressed: onCancel, child: const Text('Annuler')),
-                if (reservation.status == 'confirmed')
-                  ElevatedButton(
-                    onPressed: () {
-                      // Modifier la réservation
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
+                if (onCancel != null &&
+                    reservation.status.toLowerCase() != 'cancelled')
+                  TextButton.icon(
+                    onPressed: onCancel,
+                    icon: const Icon(Icons.cancel, size: 20),
+                    label: const Text('Annuler'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
                     ),
-                    child: const Text('Modifier'),
                   ),
               ],
             ),
+            const Divider(height: 24),
+            _InfoRow(Icons.access_time, 'Heure : ${reservation.time}'),
+            const SizedBox(height: 8),
+            _InfoRow(Icons.people,
+                '${reservation.numberOfGuests} ${reservation.numberOfGuests > 1 ? 'personnes' : 'personne'}'),
+            if (reservation.specialRequests != null &&
+                reservation.specialRequests!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _InfoRow(Icons.note, 'Note : ${reservation.specialRequests}'),
+            ],
           ],
         ),
       ),
