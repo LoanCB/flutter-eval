@@ -1,4 +1,12 @@
 {
+  "editor.tabSize": 2,
+  "editor.rulers": [120],
+  "editor.formatOnSave": true,
+  "mochaExplorer.autoload": false,
+  "conventionalCommits.scopes": ["user", "company", "location module"],
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always"
+  },
   "workbench.colorCustomizations": {
     "activityBar.background": "#193131",
     "titleBar.activeBackground": "#234545",
