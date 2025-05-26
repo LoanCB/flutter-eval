@@ -1,0 +1,20 @@
+meta {
+  name: get available reservations
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/reservations/available?seats=4&date=2024-03-27
+  body: none
+  auth: bearer
+}
+
+params:query {
+  seats: 4
+  date: 2024-03-27
+}
+
+auth:bearer {
+  token: {{token}}
+}

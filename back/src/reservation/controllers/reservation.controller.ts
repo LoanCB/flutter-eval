@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ActivityLogger } from '@src/activity-logger/helpers/activity-logger.decorator';
 import { Resources } from '@src/activity-logger/types/resource.types';
 import { Roles } from '@src/auth/decorators/role.decorator';
@@ -10,9 +10,14 @@ import { LoggedUser } from '@src/auth/types/logged-user.type';
 import { SwaggerFailureResponse } from '@src/common/helpers/common-set-decorators.helper';
 import { PaginatedList } from '@src/paginator/paginator.type';
 import { RoleType } from '@src/users/types/role.types';
+import { AvailableReservationsDto } from '../dto/available-reservations.dto';
+import { AvailableTimeSlotDto } from '../dto/available-time-slot.dto';
+import { CreateReservationWithTimeDto } from '../dto/create-reservation-with-time.dto';
 import { CreateReservationDto } from '../dto/create-reservation.dto';
+import { CreateTableDto } from '../dto/create-table.dto';
 import { ReservationQueryFilterDto } from '../dto/reservation-query-filter.dto';
 import { Reservation } from '../entities/reservation.entity';
+import { Table } from '../entities/table.entity';
 import { ReservationForbiddenException } from '../helpers/exceptions/reservation.exception';
 import { ReservationService } from '../services/reservation.service';
 import { ReservationStatus } from '../types/reservation.types';
@@ -26,11 +31,37 @@ import { ReservationStatus } from '../types/reservation.types';
 export class ReservationController {
   constructor(private readonly reservationService: ReservationService) {}
 
+  @Post('tables')
+  @Roles(RoleType.HOST)
+  @ActivityLogger({ description: 'Create a new table' })
+  async createTable(@Body() createTableDto: CreateTableDto): Promise<Table> {
+    return this.reservationService.createTable(createTableDto);
+  }
+
   @Post()
   @Roles(RoleType.CUSTOMER)
   @ActivityLogger({ description: 'Create a new reservation' })
   async create(@Body() createReservationDto: CreateReservationDto, @GetUser() user: LoggedUser): Promise<Reservation> {
     return this.reservationService.create(createReservationDto, user);
+  }
+
+  @Post('with-time')
+  @ApiOperation({ summary: 'Create a new reservation with specific table and time' })
+  @ApiResponse({
+    status: 201,
+    description: 'The reservation has been successfully created.',
+    type: Reservation,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request.' })
+  @ApiResponse({ status: 401, description: 'Unauthorized.' })
+  @ApiResponse({ status: 404, description: 'Table not found.' })
+  @UseGuards(JwtAuthGuard)
+  @Roles(RoleType.CUSTOMER)
+  createWithTime(
+    @Body() createReservationDto: CreateReservationWithTimeDto,
+    @GetUser() user: LoggedUser,
+  ): Promise<Reservation> {
+    return this.reservationService.createWithTime(createReservationDto, user);
   }
 
   @Get()
@@ -44,6 +75,13 @@ export class ReservationController {
       totalResults: total,
       currentResults: reservations.length,
     };
+  }
+
+  @Get('available')
+  @Roles(RoleType.CUSTOMER)
+  @ActivityLogger({ description: 'Get available reservations' })
+  async findAvailable(@Query() query: AvailableReservationsDto): Promise<AvailableTimeSlotDto[]> {
+    return this.reservationService.findAvailableReservations(query);
   }
 
   @Get(':id')

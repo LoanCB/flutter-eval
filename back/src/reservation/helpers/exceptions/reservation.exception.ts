@@ -8,6 +8,7 @@ export enum ReservationErrorCode {
   TIME_SLOT_ALREADY_RESERVED = 'TIME_SLOT_ALREADY_RESERVED',
   NOT_ENOUGH_SEATS = 'NOT_ENOUGH_SEATS',
   RESERVATION_FORBIDDEN = 'RESERVATION_FORBIDDEN',
+  TABLE_ALREADY_EXISTS = 'TABLE_ALREADY_EXISTS',
 }
 
 export class ReservationHttpException extends CustomHttpException {
@@ -25,6 +26,7 @@ export class ReservationHttpException extends CustomHttpException {
       [ReservationErrorCode.TIME_SLOT_ALREADY_RESERVED]: 'Time slot is already reserved',
       [ReservationErrorCode.NOT_ENOUGH_SEATS]: 'Not enough seats available',
       [ReservationErrorCode.RESERVATION_FORBIDDEN]: "You haven't rights to access to this reservation",
+      [ReservationErrorCode.TABLE_ALREADY_EXISTS]: 'A table with this number already exists',
     };
 
     return messages[this.code] || null;
