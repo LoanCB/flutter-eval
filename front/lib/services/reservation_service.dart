@@ -23,6 +23,33 @@ class ReservationService {
       status: 'pending',
       createdAt: DateTime.now().subtract(const Duration(hours: 2)),
     ),
+    // Ajout de réservations pour aujourd'hui
+    Reservation(
+      id: 3,
+      date: DateTime.now(),
+      time: '12:30',
+      numberOfGuests: 3,
+      status: 'confirmed',
+      specialRequests: 'Allergie aux fruits de mer',
+      createdAt: DateTime.now().subtract(const Duration(days: 1)),
+    ),
+    Reservation(
+      id: 4,
+      date: DateTime.now(),
+      time: '19:00',
+      numberOfGuests: 6,
+      status: 'pending',
+      specialRequests: 'Table pour anniversaire',
+      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+    ),
+    Reservation(
+      id: 5,
+      date: DateTime.now(),
+      time: '20:30',
+      numberOfGuests: 2,
+      status: 'confirmed',
+      createdAt: DateTime.now().subtract(const Duration(days: 2)),
+    ),
   ];
 
   // Obtenir toutes les réservations de l'utilisateur connecté
@@ -33,6 +60,32 @@ class ReservationService {
       const Duration(milliseconds: 500),
     ); // Simule la latence réseau
     return _mockReservations;
+  }
+
+  // Obtenir toutes les réservations du jour
+  Future<List<Reservation>> getTodayReservations() async {
+    if (!_authService.isLoggedIn) {
+      throw ReservationException('Vous devez être connecté pour voir les réservations');
+    }
+
+    // Vérifier si l'utilisateur est un hôte
+    if (_authService.user?.role != 'host') {
+      throw ReservationException('Accès réservé aux hôtes');
+    }
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final today = DateTime.now();
+    final todayReservations = _mockReservations.where((reservation) {
+      return reservation.date.year == today.year &&
+          reservation.date.month == today.month &&
+          reservation.date.day == today.day;
+    }).toList();
+
+    // Trier les réservations par heure
+    todayReservations.sort((a, b) => a.time.compareTo(b.time));
+
+    return todayReservations;
   }
 
   // Créer une nouvelle réservation

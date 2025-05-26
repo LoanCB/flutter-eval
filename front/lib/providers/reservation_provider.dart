@@ -7,11 +7,13 @@ class ReservationProvider extends ChangeNotifier {
   final ReservationService _reservationService = ReservationService();
 
   List<Reservation> _reservations = [];
+  List<Reservation> _todayReservations = [];
   bool _isLoading = false;
   String? _error;
 
   // Getters
   List<Reservation> get reservations => _reservations;
+  List<Reservation> get todayReservations => _todayReservations;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -24,56 +26,58 @@ class ReservationProvider extends ChangeNotifier {
 
   // Charger les réservations de l'utilisateur
   Future<void> loadUserReservations() async {
-    _setLoading(true);
-    _clearError();
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
     try {
       _reservations = await _reservationService.getUserReservations();
-      _clearError();
     } catch (e) {
-      _setError('Erreur lors du chargement des réservations: $e');
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
+  }
 
-    _setLoading(false);
+  Future<void> loadTodayReservations() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _todayReservations = await _reservationService.getTodayReservations();
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // Créer une nouvelle réservation
   Future<bool> createReservation(CreateReservationRequest request) async {
-    _setLoading(true);
-    _clearError();
-
     try {
-      final newReservation = await _reservationService.createReservation(
-        request,
-      );
-      _reservations.add(newReservation);
-      _clearError();
-      notifyListeners();
+      await _reservationService.createReservation(request);
+      await loadUserReservations(); // Recharger les réservations
       return true;
     } catch (e) {
-      _setError('Erreur lors de la création de la réservation: $e');
+      _error = e.toString();
+      notifyListeners();
       return false;
-    } finally {
-      _setLoading(false);
     }
   }
 
   // Annuler une réservation
   Future<bool> cancelReservation(int reservationId) async {
-    _setLoading(true);
-    _clearError();
-
     try {
       await _reservationService.cancelReservation(reservationId);
-      _reservations.removeWhere((r) => r.id == reservationId);
-      _clearError();
-      notifyListeners();
+      await loadUserReservations(); // Recharger les réservations
       return true;
     } catch (e) {
-      _setError('Erreur lors de l\'annulation de la réservation: $e');
+      _error = e.toString();
+      notifyListeners();
       return false;
-    } finally {
-      _setLoading(false);
     }
   }
 
@@ -82,7 +86,8 @@ class ReservationProvider extends ChangeNotifier {
     try {
       return await _reservationService.getAvailableTimeSlots(date);
     } catch (e) {
-      _setError('Erreur lors de la récupération des créneaux: $e');
+      _error = 'Erreur lors de la récupération des créneaux: $e';
+      notifyListeners();
       return [];
     }
   }
@@ -90,24 +95,9 @@ class ReservationProvider extends ChangeNotifier {
   // Réinitialiser les données (utile lors de la déconnexion)
   void clear() {
     _reservations = [];
+    _todayReservations = [];
     _error = null;
     _isLoading = false;
-    notifyListeners();
-  }
-
-  // Méthodes privées
-  void _setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
-  }
-
-  void _setError(String error) {
-    _error = error;
-    notifyListeners();
-  }
-
-  void _clearError() {
-    _error = null;
     notifyListeners();
   }
 }
