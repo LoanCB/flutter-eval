@@ -7,6 +7,7 @@ import { LoggingInterceptor } from './activity-logger/helpers/activity-logger.in
 import { AuthModule } from './auth/auth.module';
 import { ApiConfigModule } from './config/api-config.module';
 import configuration from './config/helpers/api-config.config';
+import { MenuModule } from './menu/menu.module';
 import { dataSourceOptions } from './orm/data-source';
 import { ReservationModule } from './reservation/reservation.module';
 import { UserModule } from './users/user.module';
@@ -23,6 +24,7 @@ import { UserModule } from './users/user.module';
     ActivityLoggerModule,
     AuthModule,
     ReservationModule,
+    MenuModule,
   ],
   providers: [
     {
