@@ -34,3 +34,5 @@ To run the app in vscode, use the following command:
 ```bash
 flutter run
 ```
+
+Link to access the mockups: https://www.figma.com/design/lpnpFS2QQ2xnHKd6VGLdFl/flutter-restaurant?node-id=0-1&t=xBtO9Dn4KgMCsIXG-1
