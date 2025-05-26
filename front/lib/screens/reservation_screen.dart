@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/restaurant_models.dart';
 import '../data/restaurant_data.dart';
+import '../models/reservation.dart';
+import 'reservation_confirmation_screen.dart';
 
 class ReservationScreen extends StatefulWidget {
   const ReservationScreen({super.key});
@@ -10,17 +12,31 @@ class ReservationScreen extends StatefulWidget {
 }
 
 class _ReservationScreenState extends State<ReservationScreen> {
+  final _formKey = GlobalKey<FormState>();
   DateTime? selectedDate;
-  int numberOfGuests = 2; // Valeur par défaut
+  TimeOfDay? selectedTime;
+  int numberOfGuests = 2;
   List<TimeSlot> availableTimeSlots = [];
   bool isLoading = false;
+
+  // Form controllers
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // Pré-sélectionner la date d'aujourd'hui
     selectedDate = DateTime.now();
     _loadTimeSlots();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    super.dispose();
   }
 
   void _loadTimeSlots() {
@@ -61,6 +77,110 @@ class _ReservationScreenState extends State<ReservationScreen> {
     }
   }
 
+  TimeOfDay _parseTimeSlot(String timeString) {
+    final parts = timeString.split(':');
+    return TimeOfDay(
+      hour: int.parse(parts[0]),
+      minute: int.parse(parts[1]),
+    );
+  }
+
+  void _handleTimeSlotSelection(TimeSlot slot) {
+    setState(() {
+      selectedTime = _parseTimeSlot(slot.time);
+    });
+  }
+
+  void _submitReservation() {
+    if (_formKey.currentState?.validate() ?? false) {
+      if (selectedDate == null || selectedTime == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Veuillez sélectionner une date et une heure'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final reservation = ReservationFormData(
+        name: _nameController.text,
+        phone: _phoneController.text,
+        email: _emailController.text,
+        numberOfGuests: numberOfGuests,
+        date: selectedDate!,
+        time: selectedTime!,
+      );
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReservationConfirmationScreen(
+            reservation: reservation,
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              labelText: 'Nom',
+              border: OutlineInputBorder(),
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Veuillez entrer votre nom';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _phoneController,
+            decoration: const InputDecoration(
+              labelText: 'Téléphone',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.phone,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Veuillez entrer votre numéro de téléphone';
+              }
+              // Add phone number validation if needed
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _emailController,
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.emailAddress,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Veuillez entrer votre email';
+              }
+              if (!value.contains('@')) {
+                return 'Veuillez entrer un email valide';
+              }
+              return null;
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,6 +205,10 @@ class _ReservationScreenState extends State<ReservationScreen> {
             _buildRestaurantHeader(),
             const SizedBox(height: 24),
 
+            // Formulaire de réservation
+            _buildForm(),
+            const SizedBox(height: 24),
+
             // Sélection de la date
             _buildDateSelector(),
             const SizedBox(height: 16),
@@ -95,6 +219,19 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
             // Créneaux horaires disponibles
             if (selectedDate != null) ...[_buildTimeSlotsSection()],
+
+            // Bouton de confirmation
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: selectedTime != null ? _submitReservation : null,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: const Text('Confirmer la réservation'),
+              ),
+            ),
           ],
         ),
       ),
@@ -321,8 +458,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
   }
 
   Widget _buildTimeSlotsSection() {
-    if (!RestaurantData.isRestaurantOpen(selectedDate!)) {
-      return _buildClosedMessage();
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
     }
 
     return Container(
@@ -342,147 +479,53 @@ class _ReservationScreenState extends State<ReservationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Créneaux disponibles pour $numberOfGuests ${numberOfGuests == 1 ? 'personne' : 'personnes'}\nle ${_formatDate(selectedDate!)}',
-            style: const TextStyle(
+          const Text(
+            'Créneaux horaires disponibles',
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
           ),
           const SizedBox(height: 16),
-
-          if (isLoading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(20.0),
-                child: CircularProgressIndicator(),
+          if (availableTimeSlots.isEmpty)
+            const Text(
+              'Aucun créneau disponible pour cette date',
+              style: TextStyle(
+                color: Colors.red,
+                fontStyle: FontStyle.italic,
               ),
             )
           else
-            _buildTimeSlotsList(),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: availableTimeSlots.map((slot) {
+                final isSelected = selectedTime != null &&
+                    selectedTime!.hour == _parseTimeSlot(slot.time).hour &&
+                    selectedTime!.minute == _parseTimeSlot(slot.time).minute;
+
+                return ChoiceChip(
+                  label: Text(slot.time),
+                  selected: isSelected,
+                  onSelected: slot.isAvailable
+                      ? (bool selected) {
+                          if (selected) {
+                            _handleTimeSlotSelection(slot);
+                          }
+                        }
+                      : null,
+                  backgroundColor: Colors.grey[100],
+                  selectedColor: Colors.orange[100],
+                  labelStyle: TextStyle(
+                    color: slot.isAvailable
+                        ? (isSelected ? Colors.orange[700] : Colors.black87)
+                        : Colors.grey,
+                  ),
+                );
+              }).toList(),
+            ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildClosedMessage() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.red[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red[200]!),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline, color: Colors.red[700]),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Désolé, le restaurant est fermé ce jour-là.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.red[700],
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeSlotsList() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 2.5,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      itemCount: availableTimeSlots.length,
-      itemBuilder: (context, index) {
-        final timeSlot = availableTimeSlots[index];
-        return _buildTimeSlotCard(timeSlot);
-      },
-    );
-  }
-
-  Widget _buildTimeSlotCard(TimeSlot timeSlot) {
-    final bool hasEnoughSeats = timeSlot.availableSeats >= numberOfGuests;
-    final bool isAvailable = timeSlot.isAvailable && hasEnoughSeats;
-
-    Color backgroundColor;
-    Color borderColor;
-    Color textColor;
-    String statusText;
-
-    if (!timeSlot.isAvailable) {
-      backgroundColor = Colors.red[50]!;
-      borderColor = Colors.red[300]!;
-      textColor = Colors.red[700]!;
-      statusText = 'Complet';
-    } else if (!hasEnoughSeats) {
-      backgroundColor = Colors.orange[50]!;
-      borderColor = Colors.orange[300]!;
-      textColor = Colors.orange[700]!;
-      statusText =
-          'Pas assez de places\n(${timeSlot.availableSeats} disponibles)';
-    } else {
-      backgroundColor = Colors.green[50]!;
-      borderColor = Colors.green[300]!;
-      textColor = Colors.green[700]!;
-      statusText = '${timeSlot.availableSeats} places disponibles';
-    }
-
-    return InkWell(
-      onTap: isAvailable ? () => _onTimeSlotSelected(timeSlot) : null,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: borderColor),
-          boxShadow:
-              isAvailable
-                  ? [
-                    BoxShadow(
-                      color: borderColor.withValues(alpha: 0.2),
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: const Offset(0, 1),
-                    ),
-                  ]
-                  : null,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              timeSlot.time,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: textColor,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              statusText,
-              style: TextStyle(
-                fontSize: 11,
-                color: textColor,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
       ),
     );
   }
