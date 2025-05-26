@@ -1,0 +1,77 @@
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ActivityLogger } from '@src/activity-logger/helpers/activity-logger.decorator';
+import { Resources } from '@src/activity-logger/types/resource.types';
+import { Roles } from '@src/auth/decorators/role.decorator';
+import { GetUser } from '@src/auth/decorators/user.decorator';
+import { JwtAuthGuard } from '@src/auth/guards/jwt.guard';
+import { RolesGuard } from '@src/auth/guards/role.guard';
+import { LoggedUser } from '@src/auth/types/logged-user.type';
+import { SwaggerFailureResponse } from '@src/common/helpers/common-set-decorators.helper';
+import { PaginatedList } from '@src/paginator/paginator.type';
+import { RoleType } from '@src/users/types/role.types';
+import { CreateReservationDto } from '../dto/create-reservation.dto';
+import { ReservationQueryFilterDto } from '../dto/reservation-query-filter.dto';
+import { Reservation } from '../entities/reservation.entity';
+import { ReservationForbiddenException } from '../helpers/exceptions/reservation.exception';
+import { ReservationService } from '../services/reservation.service';
+import { ReservationStatus } from '../types/reservation.types';
+
+@ApiTags(Resources.RESERVATION)
+@SwaggerFailureResponse()
+@UseGuards(RolesGuard)
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
+@Controller({ path: 'reservations', version: ['1'] })
+export class ReservationController {
+  constructor(private readonly reservationService: ReservationService) {}
+
+  @Post()
+  @Roles(RoleType.CUSTOMER)
+  @ActivityLogger({ description: 'Create a new reservation' })
+  async create(@Body() createReservationDto: CreateReservationDto, @GetUser() user: LoggedUser): Promise<Reservation> {
+    return this.reservationService.create(createReservationDto, user);
+  }
+
+  @Get()
+  @Roles(RoleType.ADMINISTRATOR, RoleType.HOST)
+  @ActivityLogger({ description: 'Get all reservations' })
+  async findAll(@Query() queryFilter: ReservationQueryFilterDto): Promise<PaginatedList<Reservation>> {
+    const [reservations, total] = await this.reservationService.findAll(queryFilter);
+    return {
+      ...queryFilter,
+      results: reservations,
+      totalResults: total,
+      currentResults: reservations.length,
+    };
+  }
+
+  @Get(':id')
+  @Roles(RoleType.CUSTOMER)
+  @ActivityLogger({ description: 'Get a reservation by id' })
+  async findOne(@Param('id', ParseIntPipe) id: number, @GetUser() user: LoggedUser): Promise<Reservation> {
+    const reservation = await this.reservationService.findOne(id);
+    if (user.role.type === RoleType.CUSTOMER && reservation.user.id !== user.id) {
+      throw new ReservationForbiddenException({ id: reservation.id });
+    }
+
+    return reservation;
+  }
+
+  @Patch(':id/status')
+  @Roles(RoleType.ADMINISTRATOR, RoleType.HOST)
+  @ActivityLogger({ description: 'Update reservation status' })
+  async updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('status') status: ReservationStatus,
+  ): Promise<Reservation> {
+    return this.reservationService.updateStatus(id, status);
+  }
+
+  @Delete(':id')
+  @Roles(RoleType.ADMINISTRATOR, RoleType.HOST)
+  @ActivityLogger({ description: 'Delete a reservation' })
+  async remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    return this.reservationService.remove(id);
+  }
+}
