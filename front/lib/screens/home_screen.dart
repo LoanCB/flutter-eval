@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import 'available_seats_screen.dart';
 import 'menu_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -153,8 +154,14 @@ class HomeScreen extends StatelessWidget {
                             builder: (context) => const LoginScreen(),
                           ),
                         );
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AvailableSeatsScreen(),
+                          ),
+                        );
                       }
-                      // Sinon navigation vers réservations
                     },
                   ),
                 ),

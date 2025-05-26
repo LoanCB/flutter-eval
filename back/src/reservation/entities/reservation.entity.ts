@@ -9,20 +9,6 @@ import { TimeSlot } from './time-slot.entity';
 @Entity()
 export class Reservation extends TimestampEntity {
   @ApiProperty({
-    description: 'Name of the person making the reservation',
-    example: 'John Doe',
-  })
-  @Column()
-  name: string;
-
-  @ApiProperty({
-    description: 'Contact phone number for the reservation',
-    example: '+33 6 05 04 03 02',
-  })
-  @Column()
-  phone: string;
-
-  @ApiProperty({
     description: 'Number of guests for the reservation',
     example: 4,
     minimum: 1,

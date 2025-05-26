@@ -1,0 +1,22 @@
+meta {
+  name: create table
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/reservations/tables
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "capacity": 10,
+    "tableNumber": "1"
+  }
+}
