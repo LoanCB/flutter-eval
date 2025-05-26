@@ -1,49 +1,86 @@
-class TimeSlot {
-  final String time;
-  final int availableSeats;
-  final int totalSeats;
-
-  TimeSlot({
-    required this.time,
-    required this.availableSeats,
-    required this.totalSeats,
-  });
-
-  bool get isAvailable => availableSeats > 0;
-
-  double get occupancyRate => (totalSeats - availableSeats) / totalSeats;
-}
-
-class Restaurant {
+class MenuItem {
+  final int id;
   final String name;
   final String description;
-  final int totalTables;
-  final List<String> openingHours;
+  final double price;
+  final String category;
+  final String? imageUrl;
+  final bool available;
 
-  Restaurant({
+  MenuItem({
+    required this.id,
     required this.name,
     required this.description,
-    required this.totalTables,
-    required this.openingHours,
+    required this.price,
+    required this.category,
+    this.imageUrl,
+    required this.available,
   });
+
+  factory MenuItem.fromJson(Map<String, dynamic> json) {
+    return MenuItem(
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+      price: json['price'].toDouble(),
+      category: json['category'],
+      imageUrl: json['imageUrl'],
+      available: json['available'] ?? true,
+    );
+  }
 }
 
 class Reservation {
-  final String id;
+  final int id;
   final DateTime date;
-  final String timeSlot;
-  final String customerName;
-  final String customerPhone;
+  final String time;
   final int numberOfGuests;
-  final String status; // 'pending', 'confirmed', 'cancelled'
+  final String status;
+  final String? specialRequests;
+  final DateTime createdAt;
 
   Reservation({
     required this.id,
     required this.date,
-    required this.timeSlot,
-    required this.customerName,
-    required this.customerPhone,
+    required this.time,
     required this.numberOfGuests,
-    this.status = 'pending',
+    required this.status,
+    this.specialRequests,
+    required this.createdAt,
   });
+
+  factory Reservation.fromJson(Map<String, dynamic> json) {
+    return Reservation(
+      id: json['id'],
+      date: DateTime.parse(json['date']),
+      time: json['time'],
+      numberOfGuests: json['numberOfGuests'],
+      status: json['status'],
+      specialRequests: json['specialRequests'],
+      createdAt: DateTime.parse(json['createdAt']),
+    );
+  }
+}
+
+class CreateReservationRequest {
+  final DateTime date;
+  final String time;
+  final int numberOfGuests;
+  final String? specialRequests;
+
+  CreateReservationRequest({
+    required this.date,
+    required this.time,
+    required this.numberOfGuests,
+    this.specialRequests,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'date': date.toIso8601String().split('T')[0],
+      'time': time,
+      'numberOfGuests': numberOfGuests,
+      'specialRequests': specialRequests,
+    };
+  }
 }

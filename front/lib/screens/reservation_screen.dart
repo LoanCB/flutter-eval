@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import '../models/restaurant_models.dart';
+import 'package:provider/provider.dart';
+
 import '../data/restaurant_data.dart';
 import '../models/reservation.dart';
+import '../models/restaurant_models.dart';
+import '../providers/auth_provider.dart';
 import 'reservation_confirmation_screen.dart';
 
 class ReservationScreen extends StatefulWidget {
@@ -79,10 +82,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
 
   TimeOfDay _parseTimeSlot(String timeString) {
     final parts = timeString.split(':');
-    return TimeOfDay(
-      hour: int.parse(parts[0]),
-      minute: int.parse(parts[1]),
-    );
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 
   void _handleTimeSlotSelection(TimeSlot slot) {
@@ -115,9 +115,9 @@ class _ReservationScreenState extends State<ReservationScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ReservationConfirmationScreen(
-            reservation: reservation,
-          ),
+          builder:
+              (context) =>
+                  ReservationConfirmationScreen(reservation: reservation),
         ),
       );
     }
@@ -195,6 +195,45 @@ class _ReservationScreenState extends State<ReservationScreen> {
         ),
         backgroundColor: Colors.orange[700],
         elevation: 0,
+        actions: [
+          Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              return PopupMenuButton<String>(
+                icon: const Icon(Icons.account_circle, color: Colors.white),
+                onSelected: (value) async {
+                  if (value == 'logout') {
+                    await authProvider.logout();
+                  }
+                },
+                itemBuilder:
+                    (context) => [
+                      PopupMenuItem(
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person),
+                            const SizedBox(width: 8),
+                            Text(authProvider.user?.fullName ?? 'Utilisateur'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'logout',
+                        child: Row(
+                          children: [
+                            Icon(Icons.logout, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text(
+                              'Se déconnecter',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -491,79 +530,46 @@ class _ReservationScreenState extends State<ReservationScreen> {
           if (availableTimeSlots.isEmpty)
             const Text(
               'Aucun créneau disponible pour cette date',
-              style: TextStyle(
-                color: Colors.red,
-                fontStyle: FontStyle.italic,
-              ),
+              style: TextStyle(color: Colors.red, fontStyle: FontStyle.italic),
             )
           else
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: availableTimeSlots.map((slot) {
-                final isSelected = selectedTime != null &&
-                    selectedTime!.hour == _parseTimeSlot(slot.time).hour &&
-                    selectedTime!.minute == _parseTimeSlot(slot.time).minute;
+              children:
+                  availableTimeSlots.map((slot) {
+                    final isSelected =
+                        selectedTime != null &&
+                        selectedTime!.hour == _parseTimeSlot(slot.time).hour &&
+                        selectedTime!.minute ==
+                            _parseTimeSlot(slot.time).minute;
 
-                return ChoiceChip(
-                  label: Text(slot.time),
-                  selected: isSelected,
-                  onSelected: slot.isAvailable
-                      ? (bool selected) {
-                          if (selected) {
-                            _handleTimeSlotSelection(slot);
-                          }
-                        }
-                      : null,
-                  backgroundColor: Colors.grey[100],
-                  selectedColor: Colors.orange[100],
-                  labelStyle: TextStyle(
-                    color: slot.isAvailable
-                        ? (isSelected ? Colors.orange[700] : Colors.black87)
-                        : Colors.grey,
-                  ),
-                );
-              }).toList(),
+                    return ChoiceChip(
+                      label: Text(slot.time),
+                      selected: isSelected,
+                      onSelected:
+                          slot.isAvailable
+                              ? (bool selected) {
+                                if (selected) {
+                                  _handleTimeSlotSelection(slot);
+                                }
+                              }
+                              : null,
+                      backgroundColor: Colors.grey[100],
+                      selectedColor: Colors.orange[100],
+                      labelStyle: TextStyle(
+                        color:
+                            slot.isAvailable
+                                ? (isSelected
+                                    ? Colors.orange[700]
+                                    : Colors.black87)
+                                : Colors.grey,
+                      ),
+                    );
+                  }).toList(),
             ),
         ],
       ),
-    );
-  }
-
-  void _onTimeSlotSelected(TimeSlot timeSlot) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Réservation'),
-          content: Text(
-            'Vous avez sélectionné le créneau ${timeSlot.time} pour $numberOfGuests ${numberOfGuests == 1 ? 'personne' : 'personnes'} le ${_formatDate(selectedDate!)}.\n\n'
-            'Places disponibles : ${timeSlot.availableSeats}\n'
-            'Places nécessaires : $numberOfGuests',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // TODO: Naviguer vers le formulaire de réservation
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Créneau ${timeSlot.time} sélectionné pour $numberOfGuests ${numberOfGuests == 1 ? 'personne' : 'personnes'} !',
-                    ),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-              child: const Text('Continuer'),
-            ),
-          ],
-        );
-      },
     );
   }
 
