@@ -304,4 +304,14 @@ export class ReservationService {
 
     return this.reservationRepository.save(reservation);
   }
+
+  async findByUser(userId: number): Promise<Reservation[]> {
+    return this.reservationRepository.find({
+      where: { user: { id: userId } },
+      relations: ['user', 'table', 'timeSlot'],
+      order: {
+        reservationDate: 'DESC',
+      },
+    });
+  }
 }

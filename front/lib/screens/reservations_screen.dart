@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 
 import '../models/restaurant_models.dart';
 import '../providers/reservation_provider.dart';
@@ -231,17 +232,17 @@ class _ReservationCard extends StatelessWidget {
     IconData statusIcon;
 
     switch (reservation.status) {
-      case 'confirmed':
+      case 'CONFIRMED':
         statusColor = Colors.green;
         statusText = 'Confirmée';
         statusIcon = Icons.check_circle;
         break;
-      case 'pending':
+      case 'PENDING':
         statusColor = Colors.orange;
         statusText = 'En attente';
         statusIcon = Icons.pending;
         break;
-      case 'cancelled':
+      case 'CANCELLED':
         statusColor = Colors.red;
         statusText = 'Annulée';
         statusIcon = Icons.cancel;
@@ -303,21 +304,23 @@ class _ReservationCard extends StatelessWidget {
               '${reservation.date.day}/${reservation.date.month}/${reservation.date.year}',
             ),
             const SizedBox(height: 8),
-            _InfoRow(Icons.access_time, reservation.time),
+            _InfoRow(
+              Icons.access_time,
+              '${reservation.time} - ${DateFormat('HH:mm').format(reservation.end)}',
+            ),
             const SizedBox(height: 8),
-            _InfoRow(Icons.people, '${reservation.numberOfGuests} personne(s)'),
-            if (reservation.specialRequests != null) ...[
-              const SizedBox(height: 8),
-              _InfoRow(Icons.note, reservation.specialRequests!),
-            ],
+            _InfoRow(
+              Icons.chair,
+              'Table ${reservation.table['tableNumber']} (${reservation.numberOfGuests} personne(s))',
+            ),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                if (reservation.status == 'pending' ||
-                    reservation.status == 'confirmed')
+                if (reservation.status == 'PENDING' ||
+                    reservation.status == 'CONFIRMED')
                   TextButton(onPressed: onCancel, child: const Text('Annuler')),
-                if (reservation.status == 'confirmed')
+                if (reservation.status == 'CONFIRMED')
                   ElevatedButton(
                     onPressed: () {
                       // Modifier la réservation
