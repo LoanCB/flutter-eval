@@ -10,7 +10,7 @@ export class Role extends TimestampEntity {
   @Column()
   name: string;
 
-  @ApiProperty({ description: 'Type of the role. It use for permissions', enum: RoleType, example: RoleType.VISITOR })
+  @ApiProperty({ description: 'Type of the role. It use for permissions', enum: RoleType, example: RoleType.CUSTOMER })
   @Column({ type: 'enum', enum: RoleType })
   type: RoleType;
 

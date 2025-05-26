@@ -3,12 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityFilteredListResults, getEntityFilteredList } from '@paginator/paginator.service';
 import { Password } from '@src/auth/helpers/password.utils';
 import { In, Repository } from 'typeorm';
+import { CreateUserDto, FormattedCreatedUserDto } from '../dto/create-user.dto';
+import { UpdateUserDto } from '../dto/update-user.dto';
+import { UserQueryFilterDto } from '../dto/user-query-filter.dto';
 import { Role } from '../entities/role.entity';
 import { User } from '../entities/user.entity';
 import { RoleNotFoundException, UserEmailAlreadyExistsException } from '../helpers/exceptions/user.exception';
-import { CreateUserDto, FormattedCreatedUserDto } from '../dto/create-user.dto';
-import { UserQueryFilterDto } from '../dto/user-query-filter.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
 
 @Injectable()
 export class UserService {
@@ -112,7 +112,6 @@ export class UserService {
         'user.password',
       ])
       .leftJoinAndSelect('user.role', 'role')
-      .leftJoinAndSelect('user.company', 'company')
       .where('user.email = :email', { email })
       .withDeleted()
       .getOne();

@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, Request, UseGuards }
 import { DisableActivityLogger } from '@src/activity-logger/helpers/disable-logger.decorator';
 import { Request as ExpressRequest } from 'express';
 import { LoginDto } from '../dtos/login.dto';
+import { RegisterDto } from '../dtos/register.dto';
 import { JwtAuthGuard } from '../guards/jwt.guard';
 import { UserRequestNotFoundException } from '../helpers/auth.exception';
 import { LoggedUser, LoggedUserWithToken } from '../types/logged-user.type';
@@ -16,6 +17,12 @@ export class AuthController {
   @DisableActivityLogger()
   signIn(@Body() signInDto: LoginDto): Promise<LoggedUserWithToken> {
     return this.authService.singIn(signInDto.email, signInDto.password);
+  }
+
+  @HttpCode(HttpStatus.CREATED)
+  @Post('register')
+  register(@Body() registerDto: RegisterDto): Promise<LoggedUserWithToken> {
+    return this.authService.register(registerDto);
   }
 
   @Get('profile')
