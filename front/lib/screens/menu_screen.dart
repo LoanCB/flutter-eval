@@ -1,114 +1,216 @@
 import 'package:flutter/material.dart';
 
-import '../models/restaurant_models.dart';
+import '../models/menu_item.dart';
+import '../services/menu_service.dart';
 
-class MenuScreen extends StatelessWidget {
+class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
 
-  // Données fictives pour le menu
-  static final List<MenuItem> _mockMenuItems = [
-    MenuItem(
-      id: 1,
-      name: 'Salade César',
-      description:
-          'Salade fraîche avec croûtons, parmesan et sauce César maison',
-      price: 14.90,
-      category: 'Entrées',
-      available: true,
-    ),
-    MenuItem(
-      id: 2,
-      name: 'Carpaccio de bœuf',
-      description: 'Fines lamelles de bœuf, roquette, copeaux de parmesan',
-      price: 18.50,
-      category: 'Entrées',
-      available: true,
-    ),
-    MenuItem(
-      id: 3,
-      name: 'Filet de saumon grillé',
-      description: 'Saumon grillé, légumes de saison, sauce hollandaise',
-      price: 26.90,
-      category: 'Plats',
-      available: true,
-    ),
-    MenuItem(
-      id: 4,
-      name: 'Côte de bœuf',
-      description:
-          'Côte de bœuf grillée, pommes de terre grenailles, sauce poivre',
-      price: 32.90,
-      category: 'Plats',
-      available: true,
-    ),
-    MenuItem(
-      id: 5,
-      name: 'Risotto aux champignons',
-      description: 'Risotto crémeux aux champignons de saison, truffe',
-      price: 22.90,
-      category: 'Plats',
-      available: true,
-    ),
-    MenuItem(
-      id: 6,
-      name: 'Tiramisu maison',
-      description: 'Tiramisu traditionnel fait maison',
-      price: 8.90,
-      category: 'Desserts',
-      available: true,
-    ),
-    MenuItem(
-      id: 7,
-      name: 'Tarte aux fruits',
-      description: 'Tarte saisonnière aux fruits frais',
-      price: 9.90,
-      category: 'Desserts',
-      available: true,
-    ),
-    MenuItem(
-      id: 8,
-      name: 'Café gourmand',
-      description: 'Café accompagné de petites douceurs',
-      price: 11.90,
-      category: 'Desserts',
-      available: true,
-    ),
-  ];
+  @override
+  State<MenuScreen> createState() => _MenuScreenState();
+}
+
+class _MenuScreenState extends State<MenuScreen> {
+  final MenuService _menuService = MenuService();
+  List<MenuItem> _menuItems = [];
+  List<String> _categories = [];
+  String? _selectedCategory;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMenuItems();
+  }
+
+  Future<void> _loadMenuItems() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final items = await _menuService.getMenuItems();
+      setState(() {
+        _menuItems = items;
+        _categories =
+            items.map((item) => item.category).toSet().toList()..sort();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<MenuItem> get _filteredItems {
+    if (_selectedCategory == null) {
+      return _menuItems;
+    }
+    return _menuItems
+        .where((item) => item.category == _selectedCategory)
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final categories =
-        _mockMenuItems.map((item) => item.category).toSet().toList();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notre Menu'),
         backgroundColor: Colors.orange,
         foregroundColor: Colors.white,
       ),
-      body: ListView.builder(
+      body: Column(
+        children: [
+          // Category filter
+          if (_categories.isNotEmpty) _buildCategoryFilter(),
+
+          // Content
+          Expanded(child: _buildContent()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryFilter() {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _buildCategoryChip('Tous', null),
+            const SizedBox(width: 8),
+            ..._categories.map(
+              (category) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _buildCategoryChip(category, category),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryChip(String label, String? category) {
+    final isSelected = _selectedCategory == category;
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _selectedCategory = selected ? category : null;
+        });
+      },
+      backgroundColor: Colors.grey.shade200,
+      selectedColor: Colors.orange.shade100,
+      checkmarkColor: Colors.orange,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.orange.shade800 : Colors.grey.shade700,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.orange),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'Erreur lors du chargement du menu',
+              style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: TextStyle(color: Colors.grey.shade500),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadMenuItems,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Réessayer'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_filteredItems.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.restaurant_menu, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'Aucun élément trouvé',
+              style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+            ),
+            if (_selectedCategory != null) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedCategory = null;
+                  });
+                },
+                child: const Text('Voir tous les éléments'),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    final groupedItems = <String, List<MenuItem>>{};
+    for (final item in _filteredItems) {
+      groupedItems.putIfAbsent(item.category, () => []).add(item);
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadMenuItems,
+      color: Colors.orange,
+      child: ListView.builder(
         padding: const EdgeInsets.all(16.0),
-        itemCount: categories.length,
+        itemCount: groupedItems.length,
         itemBuilder: (context, index) {
-          final category = categories[index];
-          final categoryItems =
-              _mockMenuItems
-                  .where((item) => item.category == category)
-                  .toList();
+          final category = groupedItems.keys.elementAt(index);
+          final categoryItems = groupedItems[category]!;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (index > 0) const SizedBox(height: 24),
-              Text(
-                category,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange,
+              if (_selectedCategory == null) ...[
+                Text(
+                  category,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 12),
+              ],
               ...categoryItems.map((item) => _MenuItemCard(item)),
             ],
           );
@@ -127,21 +229,14 @@ class _MenuItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image placeholder
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.grey.shade200,
-              ),
-              child: const Icon(Icons.restaurant, size: 40, color: Colors.grey),
-            ),
+            // Image
+            _buildImage(),
             const SizedBox(width: 16),
             // Content
             Expanded(
@@ -161,7 +256,7 @@ class _MenuItemCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${item.price.toStringAsFixed(2)} €',
+                        item.formattedPrice,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -179,16 +274,16 @@ class _MenuItemCard extends StatelessWidget {
                   Row(
                     children: [
                       Icon(
-                        item.available ? Icons.check_circle : Icons.cancel,
+                        item.isAvailable ? Icons.check_circle : Icons.cancel,
                         size: 16,
-                        color: item.available ? Colors.green : Colors.red,
+                        color: item.isAvailable ? Colors.green : Colors.red,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        item.available ? 'Disponible' : 'Non disponible',
+                        item.isAvailable ? 'Disponible' : 'Non disponible',
                         style: TextStyle(
                           fontSize: 12,
-                          color: item.available ? Colors.green : Colors.red,
+                          color: item.isAvailable ? Colors.green : Colors.red,
                         ),
                       ),
                     ],
@@ -198,6 +293,50 @@ class _MenuItemCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildImage() {
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: Colors.grey.shade200,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child:
+            item.imageUrl != null && item.imageUrl!.isNotEmpty
+                ? Image.network(
+                  item.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(
+                      Icons.restaurant,
+                      size: 40,
+                      color: Colors.grey,
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) {
+                      return child;
+                    }
+                    return Center(
+                      child: CircularProgressIndicator(
+                        value:
+                            loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                        strokeWidth: 2,
+                        color: Colors.orange,
+                      ),
+                    );
+                  },
+                )
+                : const Icon(Icons.restaurant, size: 40, color: Colors.grey),
       ),
     );
   }

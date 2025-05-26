@@ -8,6 +8,9 @@ class ApiConfig {
   static const String registerEndpoint = '/auth/register';
   static const String profileEndpoint = '/auth/profile';
 
+  // Menu endpoints
+  static const String menuEndpoint = '/menu';
+
   // Headers
   static Map<String, String> get defaultHeaders => {
     'Content-Type': 'application/json',
@@ -23,4 +26,5 @@ class ApiConfig {
   static String get loginUrl => '$baseUrl$apiBasePath$loginEndpoint';
   static String get registerUrl => '$baseUrl$apiBasePath$registerEndpoint';
   static String get profileUrl => '$baseUrl$apiBasePath$profileEndpoint';
+  static String get menuUrl => '$baseUrl$apiBasePath$menuEndpoint';
 }
