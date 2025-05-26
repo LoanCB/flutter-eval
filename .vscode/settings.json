@@ -3,5 +3,18 @@
     "activityBar.background": "#193131",
     "titleBar.activeBackground": "#234545",
     "titleBar.activeForeground": "#F8FCFC"
+  },
+  "dart.flutterSdkPath": null,
+  "dart.checkForSdkUpdates": true,
+  "dart.allowAnalytics": false,
+  "dart.closingLabels": true,
+  "dart.flutterCreateIOSLanguage": "swift",
+  "dart.flutterCreateAndroidLanguage": "kotlin",
+  "flutter.sdk": null,
+  "files.associations": {
+    "*.dart": "dart"
+  },
+  "emmet.includeLanguages": {
+    "dart": "html"
   }
 }
