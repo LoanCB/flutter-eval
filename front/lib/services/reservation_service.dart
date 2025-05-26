@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../models/restaurant_models.dart';
 import '../services/auth_service.dart';
+import '../config/api_config.dart';
 
 class ReservationService {
   final AuthService _authService = AuthService();
@@ -97,6 +100,43 @@ class ReservationService {
       '21:30',
       '22:00',
     ];
+  }
+
+  // Obtenir les places disponibles
+  Future<List<Map<String, dynamic>>> getAvailableSeats({
+    required String date,
+    int? seats,
+  }) async {
+    if (!_authService.isLoggedIn) {
+      throw ReservationException('Vous devez être connecté pour voir les places disponibles');
+    }
+
+    // Construire l'URL avec les paramètres de requête
+    final queryParams = <String, String>{
+      'date': date,
+    };
+    if (seats != null) {
+      queryParams['seats'] = seats.toString();
+    }
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiBasePath}/reservations/available')
+        .replace(queryParameters: queryParams);
+
+    try {
+      final response = await http.get(
+        uri,
+        headers: ApiConfig.authHeaders(_authService.token!),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => Map<String, dynamic>.from(json)).toList();
+      } else {
+        throw ReservationException('Erreur lors de la récupération des places disponibles');
+      }
+    } catch (e) {
+      throw ReservationException('Erreur de connexion: ${e.toString()}');
+    }
   }
 
   // Dans une vraie implémentation, ces méthodes feraient des appels HTTP:
