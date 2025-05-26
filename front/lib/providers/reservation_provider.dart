@@ -7,11 +7,14 @@ class ReservationProvider extends ChangeNotifier {
   final ReservationService _reservationService = ReservationService();
 
   List<Reservation> _reservations = [];
+  List<Reservation> _todayReservations = [];
   bool _isLoading = false;
   String? _error;
+  DateTime _selectedDate = DateTime.now();
 
   // Getters
   List<Reservation> get reservations => _reservations;
+  List<Reservation> get todayReservations => _todayReservations;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -87,9 +90,33 @@ class ReservationProvider extends ChangeNotifier {
     }
   }
 
+  // Charger les réservations pour la date sélectionnée
+  Future<void> loadTodayReservations() async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      _todayReservations = await _reservationService.getReservationsForDate(
+        _selectedDate,
+      );
+      _clearError();
+    } catch (e) {
+      _setError('Erreur lors du chargement des réservations du jour: $e');
+    }
+
+    _setLoading(false);
+  }
+
+  // Changer la date sélectionnée
+  void setSelectedDate(DateTime date) {
+    _selectedDate = date;
+    loadTodayReservations();
+  }
+
   // Réinitialiser les données (utile lors de la déconnexion)
   void clear() {
     _reservations = [];
+    _todayReservations = [];
     _error = null;
     _isLoading = false;
     notifyListeners();

@@ -99,6 +99,21 @@ class ReservationService {
     ];
   }
 
+  // Obtenir les réservations pour une date spécifique
+  Future<List<Reservation>> getReservationsForDate(DateTime date) async {
+    // Simule la latence réseau
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Filtre les réservations pour la date donnée et les trie par horaire
+    return _mockReservations
+        .where((reservation) =>
+            reservation.date.year == date.year &&
+            reservation.date.month == date.month &&
+            reservation.date.day == date.day)
+        .toList()
+      ..sort((a, b) => a.time.compareTo(b.time));
+  }
+
   // Dans une vraie implémentation, ces méthodes feraient des appels HTTP:
 
   /*
