@@ -30,6 +30,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  intl: ^0.18.0 # Add this line for date formatting
+  http: ^1.2.0 # Pour les requêtes HTTP
+  shared_preferences: ^2.2.2 # Pour stocker le token
+  provider: ^6.1.1 # Pour la gestion d'état
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
