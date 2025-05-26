@@ -18,9 +18,13 @@ env:
 		sed -i '' -e "s/POSTGRES_PORT=.*/POSTGRES_PORT=$$POSTGRES_PORT/" .env || sed -i -e "s/POSTGRES_PORT=.*/POSTGRES_PORT=$$POSTGRES_PORT/" .env; \
 		sed -i '' -e "s/POSTGRES_USERNAME=.*/POSTGRES_USERNAME=$$POSTGRES_USERNAME_INPUT/" .env || sed -i -e "s/POSTGRES_USERNAME=.*/POSTGRES_USERNAME=$$POSTGRES_USERNAME_INPUT/" .env; \
 		sed -i '' -e "s/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$POSTGRES_PASSWORD_INPUT/" .env || sed -i -e "s/POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$$POSTGRES_PASSWORD_INPUT/" .env; \
-		grep -q '^JWT_SECRET=' .env || echo "JWT_SECRET=$$(openssl rand -hex 32)" >> .env; \
+		echo "JWT_SECRET=$$(openssl rand -hex 32)" >> .env; \
 	else \
-		echo ".env already exists. Skipping creation."; \
+		echo ".env already exists. Checking JWT_SECRET..."; \
+		if ! grep -q '^JWT_SECRET=' .env; then \
+			echo "Generating new JWT_SECRET..."; \
+			echo "JWT_SECRET=$$(openssl rand -hex 32)" >> .env; \
+		fi \
 	fi
 
 start:
