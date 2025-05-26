@@ -1,0 +1,29 @@
+{
+  "editor.tabSize": 2,
+  "editor.rulers": [120],
+  "editor.formatOnSave": true,
+  "mochaExplorer.autoload": false,
+  "conventionalCommits.scopes": ["user module", "reservation module"],
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always"
+  },
+  "workbench.colorCustomizations": {
+    "activityBar.background": "#033616",
+    "titleBar.activeBackground": "#054B1F",
+    "titleBar.activeForeground": "#F0FEF5"
+  },
+  "cSpell.words": ["Axignis"],
+  "cSpell.ignorePaths": [
+    "package-lock.json",
+    "node_modules",
+    "vscode-extension",
+    ".git/{info,lfs,logs,refs,objects}/**",
+    ".git/{index,*refs,*HEAD}",
+    ".vscode",
+    ".vscode-insiders",
+    ".env",
+    "dist",
+    "package.json",
+    ".env.sample"
+  ]
+}
