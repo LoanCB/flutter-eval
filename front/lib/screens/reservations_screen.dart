@@ -18,177 +18,118 @@ class _ReservationsScreenState extends State<ReservationsScreen> {
     super.initState();
     // Charger les réservations au démarrage
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ReservationProvider>(
-        context,
-        listen: false,
-      ).loadUserReservations();
+      context.read<ReservationProvider>().loadTodayReservations();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<ReservationProvider>(
-      builder: (context, reservationProvider, child) {
+      builder: (context, reservationProvider, _) {
+        if (reservationProvider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final todayReservations = reservationProvider.todayReservations;
+
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Mes Réservations'),
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
+            title: const Text('Réservations du jour'),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.calendar_today),
+                onPressed: () => _selectDate(context, reservationProvider),
+              ),
+            ],
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                // Quick stats
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _StatItem(
-                          icon: Icons.calendar_today,
-                          label: 'Réservations',
-                          value: '${reservationProvider.totalReservations}',
-                        ),
-                        _StatItem(
-                          icon: Icons.check_circle,
-                          label: 'Confirmées',
-                          value: '${reservationProvider.confirmedReservations}',
-                        ),
-                        _StatItem(
-                          icon: Icons.pending,
-                          label: 'En attente',
-                          value: '${reservationProvider.pendingReservations}',
-                        ),
-                      ],
+          body: Column(
+            children: [
+              // En-tête avec les statistiques
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: Theme.of(context).colorScheme.surface,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _StatItem(
+                      icon: Icons.people,
+                      label: 'Total',
+                      value: todayReservations.length.toString(),
                     ),
-                  ),
+                    _StatItem(
+                      icon: Icons.check_circle,
+                      label: 'Confirmées',
+                      value: todayReservations
+                          .where((r) => r.status == 'confirmed')
+                          .length
+                          .toString(),
+                    ),
+                    _StatItem(
+                      icon: Icons.pending,
+                      label: 'En attente',
+                      value: todayReservations
+                          .where((r) => r.status == 'pending')
+                          .length
+                          .toString(),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-
-                // Error message
-                if (reservationProvider.error != null)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      border: Border.all(color: Colors.red.shade200),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      reservationProvider.error!,
-                      style: TextStyle(color: Colors.red.shade700),
-                    ),
-                  ),
-
-                // Loading or Reservations list
-                Expanded(
-                  child:
-                      reservationProvider.isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : reservationProvider.reservations.isEmpty
-                          ? const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.calendar_today,
-                                  size: 64,
-                                  color: Colors.grey,
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'Aucune réservation',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
+              ),
+              // Liste des réservations
+              Expanded(
+                child: todayReservations.isEmpty
+                    ? const Center(
+                        child: Text('Aucune réservation pour aujourd\'hui'),
+                      )
+                    : ListView.builder(
+                        itemCount: todayReservations.length,
+                        itemBuilder: (context, index) {
+                          final reservation = todayReservations[index];
+                          return _ReservationCard(
+                            reservation: reservation,
+                            onCancel: () => _cancelReservation(
+                              reservationProvider,
+                              reservation.id,
                             ),
-                          )
-                          : ListView.builder(
-                            itemCount: reservationProvider.reservations.length,
-                            itemBuilder: (context, index) {
-                              final reservation =
-                                  reservationProvider.reservations[index];
-                              return _ReservationCard(
-                                reservation: reservation,
-                                onCancel:
-                                    () => _cancelReservation(
-                                      reservation.id,
-                                      reservationProvider,
-                                    ),
-                              );
-                            },
-                          ),
-                ),
-              ],
-            ),
-          ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed:
-                () => _showNewReservationDialog(context, reservationProvider),
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add),
-            label: const Text('Nouvelle réservation'),
+                          );
+                        },
+                      ),
+              ),
+            ],
           ),
         );
       },
     );
   }
 
-  void _cancelReservation(
-    int reservationId,
-    ReservationProvider provider,
-  ) async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _selectDate(BuildContext context, ReservationProvider provider) async {
+    final DateTime? picked = await showDatePicker(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Annuler la réservation'),
-            content: const Text(
-              'Êtes-vous sûr de vouloir annuler cette réservation ?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Non'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: const Text('Oui, annuler'),
-              ),
-            ],
-          ),
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
     );
 
-    if (confirmed == true) {
-      final success = await provider.cancelReservation(reservationId);
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Réservation annulée avec succès'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+    if (picked != null) {
+      provider.setSelectedDate(picked);
     }
   }
 
-  void _showNewReservationDialog(
-    BuildContext context,
-    ReservationProvider provider,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => _NewReservationDialog(provider: provider),
-    );
+  void _cancelReservation(ReservationProvider provider, int id) async {
+    try {
+      await provider.cancelReservation(id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Réservation annulée')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
   }
 }
 
